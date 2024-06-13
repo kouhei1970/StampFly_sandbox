@@ -1906,7 +1906,7 @@ int8_t bmi2_sec_init(struct bmi2_dev *dev)
         {
             rslt = bmi2_get_regs(BMI2_CHIP_ID_ADDR, &chip_id, 1, dev);
         }
-        #if 1
+
         if (rslt == BMI2_OK)
         {
             /* Read chip-id of the BMI2 sensor */
@@ -1935,18 +1935,15 @@ int8_t bmi2_sec_init(struct bmi2_dev *dev)
                 }
                 else
                 {
-                    #if 1
                     /* Storing the chip-id value read from
                      * the register to identify the sensor
                      */
                     dev->chip_id = chip_id;
                     rslt = BMI2_E_DEV_NOT_FOUND;
-                    #endif
                 }
             }
             #endif
         }
-        #endif
     }
 
     return rslt;

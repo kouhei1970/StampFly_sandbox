@@ -1390,8 +1390,8 @@ int8_t bmi270_init(struct bmi2_dev *dev)
         }
 
         /* Initialize BMI2 sensor */
-        #if 1
         rslt = bmi2_sec_init(dev);
+        #if 1
         if (rslt == BMI2_OK)
         {
             /* Assign the offsets of the feature input

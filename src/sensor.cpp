@@ -1,10 +1,31 @@
 #include "sensor.hpp"
-#include "imu.hpp"
-#include "tof.hpp" 
 #include "flight_control.hpp"
 
+//Table height 685mm
+
+/************ BEEP ************/
+//BeepPWM出力Pinのアサイン
+#define BEEP 40
+
+//モータPWM周波数 
+//Beep PWM Frequency [Hz]
+int32_t beep_freq = 330;
+
+//PWM分解能
+//PWM Resolution
+const int beep_resolution = 12;
+
+//モータチャンネルのアサイン
+//BEEP Channel
+const int beep_channel  = 7;
+/************ BEEP ************/
+
+
+BMM150 Mag;
+BMP280 Pressure;
 Madgwick Drone_ahrs;
 Alt_kalman EstimatedAltitude;
+Opt_kalman EstimatePosition;
 
 INA3221 ina3221(INA3221_ADDR40_GND);// Set I2C address to 0x40 (A0 pin -> GND)
 Filter acc_filter;
@@ -18,6 +39,8 @@ Filter raw_gx_filter;
 Filter raw_gy_filter;
 Filter raw_gz_filter;
 Filter alt_filter;
+Filter u_filter;
+Filter v_filter;
 
 //Sensor data
 volatile float Roll_angle=0.0f, Pitch_angle=0.0f, Yaw_angle=0.0f;
@@ -28,6 +51,7 @@ volatile float Accel_z_offset=0.0f;
 volatile float Accel_x_raw,Accel_y_raw,Accel_z_raw;
 volatile float Accel_x,Accel_y,Accel_z;
 volatile float Roll_rate_raw,Pitch_rate_raw,Yaw_rate_raw;
+volatile int16_t Mag_x_raw, Mag_y_raw, Mag_z_raw;
 volatile float Mx,My,Mz,Mx0,My0,Mz0,Mx_ave,My_ave,Mz_ave;
 volatile float Altitude = 0.0f;
 volatile float Altitude2 = 0.0f;
@@ -48,29 +72,19 @@ volatile uint8_t Under_voltage_flag = 0;
 //volatile uint8_t ToF_bottom_data_ready_flag;
 volatile uint16_t Range=1000;
 
-uint8_t scan_i2c()
+void beep_init(void);
+
+
+void beep_init(void)
 {
-  USBSerial.println ("I2C scanner. Scanning ...");
-  delay(50);
-  byte count = 0;
-  for (uint8_t i = 1; i < 127; i++)
-  {
-    Wire1.beginTransmission (i);          // Begin I2C transmission Address (i)
-    if (Wire1.endTransmission () == 0)  // Receive 0 = success (ACK response) 
-    {
-      USBSerial.print ("Found address: ");
-      USBSerial.print (i, DEC);
-      USBSerial.print (" (0x");
-      USBSerial.print (i, HEX); 
-      USBSerial.println (")");
-      count++;
-    }
-  }
-  USBSerial.print ("Found ");      
-  USBSerial.print (count, DEC);        // numbers of devices
-  USBSerial.println (" device(s).");
-  return count;
+  #if 0
+  ledcSetup(beep_channel, (uint32_t)beep_freq, beep_resolution);
+  ledcAttachPin(BEEP, beep_channel);
+  ledcWrite(beep_channel, (uint32_t)(0));
+  #endif
 }
+
+
 
 void sensor_reset_offset(void)
 {
@@ -91,6 +105,51 @@ void sensor_calc_offset_avarage(void)
   Offset_counter++;
 }
 
+
+void pipo(void)
+{  
+  ledcChangeFrequency(beep_channel, 2000, beep_resolution);
+  ledcWrite(beep_channel, 127);
+  ets_delay_us(200000);
+  ledcWrite(beep_channel, 0);
+  ets_delay_us(5000);
+  ledcChangeFrequency(beep_channel, 1000, beep_resolution);
+  ledcWrite(beep_channel, 127);
+  ets_delay_us(200000);
+  ledcWrite(beep_channel, 0);
+}
+
+void termin(void)
+{
+  while(1)
+  {
+    if(ToF_bottom_data_ready_flag)
+    {
+      ToF_bottom_data_ready_flag = 0;
+      Range = tof_bottom_get_range();
+
+      //Change Beep freqency
+      beep_freq = ((int32_t)Range - 23)*5 + 100;
+      beep_freq = beep_freq>>2;
+      beep_freq = beep_freq<<2;
+      if(beep_freq>8000)beep_freq = 8000;
+
+      if(beep_freq<0)
+      {
+        ledcWrite(beep_channel, 0);
+      }
+      else if(beep_freq>50)
+      {
+        ledcChangeFrequency(beep_channel, (uint32_t)beep_freq, beep_resolution);
+        ledcWrite(beep_channel, 127);
+      }
+      //else ledcWrite(beep_channel, 127);
+
+      USBSerial.printf("%d %d\r\n", Range, beep_freq);
+    }
+  }
+}
+
 void test_voltage(void)
 {
   for (uint16_t i=0; i<1000; i++)
@@ -108,23 +167,58 @@ void sensor_init()
 {
   //beep_init();
  
+  //i2c_master_init();
   Wire1.begin(SDA_PIN, SCL_PIN,400000UL);
-  if(scan_i2c()==0)
+  if(i2c_scan()==0)
   {
     USBSerial.printf("No I2C device!\r\n");
     USBSerial.printf("Can not boot AtomFly2.\r\n");
     while(1);
   }
+  //Magnet sensor init
+  if (Mag.initialize() == BMM150_E_ID_NOT_CONFORM) 
+  {
+    USBSerial.printf("#BMM150 Chip ID can not read!\n\r");
+    while (1);
+  } 
+  else 
+  {
+    USBSerial.printf("#BMM150 Initialize done!\n\r");
+  }
+  Mag.set_op_mode(BMM150_FORCED_MODE);
 
+  if(!Pressure.begin())
+  {
+    USBSerial.printf("#BMP280 init failed!\n\r");
+    while(1);
+  }
+  else USBSerial.printf("#BMP280 init success!\n\r");
+  Pressure.setOversampling(0);
+
+
+  //ToF init
   tof_init();
+  //SPI init
+  if(spi_init()==ESP_OK){USBSerial.printf("SPI INIT Success!\n\r");}
+  else {USBSerial.printf("SPI INIT Success!\n\r");while(1);}
+  
   imu_init();
+  //USBSerial.printf("OPT ID(0x49):%02X\r\n", optconfig.chipid);
+  //if(optconfig.chipid!=0x49)while(1);
+
+  //if (!flow.begin()) {
+  //  USBSerial.println("Initialization of the flow sensor failed");
+  //  while(1) { }
+  //}
+  //USBSerial.println("Initialization of the flow sensor Suceses!");
+  
   Drone_ahrs.begin(400.0);
   ina3221.begin(&Wire1);
   ina3221.reset();  
   voltage_filter.set_parameter(0.005, 0.0025);
   
   uint16_t cnt=0;
-  while(cnt<3)
+  while(cnt<10)
   {
     if(ToF_bottom_data_ready_flag)
     {
@@ -133,8 +227,13 @@ void sensor_init()
       USBSerial.printf("%d %d\n\r", cnt, tof_bottom_get_range());
     }
   }
-  delay(10);
- 
+  
+  //pipo();
+  delay(500);
+  //test_imu();
+  //termin();
+  //test_voltage();  
+
   //Acceleration filter
   acc_filter.set_parameter(0.005, 0.0025);
 
@@ -149,13 +248,77 @@ void sensor_init()
   raw_az_d_filter.set_parameter(0.1, 0.0025);//alt158
   az_filter.set_parameter(0.1, 0.0025);//alt158
   alt_filter.set_parameter(0.01, 0.0025);
+  u_filter.set_parameter(0.1, 0.01);
+  v_filter.set_parameter(0.1, 0.01);
+  /*//SoSo
+  acc_filter.set_parameter(0.005, 0.0025);
   
+  raw_ax_filter.set_parameter(0.005, 0.0025);
+  raw_ay_filter.set_parameter(0.005, 0.0025);
+  raw_az_filter.set_parameter(0.005, 0.0025);
+  raw_az_d_filter.set_parameter(0.005, 0.0025);
+  
+  raw_gx_filter.set_parameter(0.002, 0.0025);
+  raw_gy_filter.set_parameter(0.002, 0.0025);
+  raw_gz_filter.set_parameter(0.002, 0.0025);
+  
+  az_filter.set_parameter(0.1, 0.0025);//Tau=0.01
+  alt_filter.set_parameter(0.01, 0.0025);
+  */
+
+  #if 0
+  //PMW3901 image capture test
+  powerUp(&optconfig);
+  USBSerial.printf("OPT ID(0x49):%02X\r\n", optconfig.chipid);
+  if(optconfig.chipid!=0x49)while(1);
+  //initRegisters();これをするとキャプチャできない
+
+  uint8_t image[35*35];
+  USBSerial.printf("Change to Frame Capture Mode\n\r");
+  enableFrameCaptureMode();
+  USBSerial.printf("Success to change to Frame Capture Mode\n\r");
+  USBSerial.printf("Reading image.....\n\r");
+  
+  //initRegisters();ここでやってもキャプチャできない
+
+  for (int8_t ii=0; ii<10; ii++)
+  {
+    readImage(image);
+    USBSerial.printf("Finish reading image.\n\r");
+      
+    USBSerial.printf("[");
+    for (uint8_t y = 0; y < 35; y++)
+    {
+      USBSerial.printf("[");
+      for (uint8_t x = 0; x < 35; x++)
+      {
+        USBSerial.printf("%d",image[x+y*35]);
+        if (x!=34) USBSerial.printf(",");
+      }
+      USBSerial.printf("],\n\r");
+    }
+    USBSerial.printf("]\n\r");
+  }
+  #endif
+
+  powerUp(&optconfig);
+  USBSerial.printf("OPT ID(0x49):%02X\r\n", optconfig.chipid);
+  if(optconfig.chipid!=0x49)while(1);
+  initRegisters();
+
 }
 
 float sensor_read(void)
 {
   float acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z;
   float ax, ay, az, gx, gy, gz, acc_norm, rate_norm;
+  float mx, my, mz; 
+  bmm150_mag_data magvalue;
+  static float velocity_x,velocity_y;
+  static float old_velocity_x[4]={0};
+  static float old_velocity_y[4]={0};
+  float deff_velocity_x;
+  float deff_velocity_y;
   float filterd_v;
   static float dp, dq, dr; 
   static uint16_t dcnt=0u;
@@ -163,6 +326,7 @@ float sensor_read(void)
   int16_t deff;
   static uint16_t old_dist[4] = {0};
   static float alt_time = 0.0f;
+  static float pos_time = 0.0f;
   static float sensor_time = 0.0f;
   static float old_alt_time = 0.0f;
   static uint8_t first_flag = 0;
@@ -170,8 +334,15 @@ float sensor_read(void)
   float old_sensor_time = 0.0;
   uint32_t st;
   float sens_interval;
-  float h;
+  //float h;
+  float alt_sensing_time;
   static float opt_interval =0.0;
+  static float pos_interval =0.0;
+  float euler[3];
+  float accel[3];
+  float observtion[3];
+
+  static uint8_t result=0;
 
   st = micros();
   old_sensor_time = sensor_time;
@@ -201,15 +372,16 @@ float sensor_read(void)
   //USBSerial.printf("%9.6f %9.6f %9.6f\n\r", Elapsed_time, sens_interval, acc_z);
 
   //Axis Transform
-  Accel_x_raw =  acc_y;
-  Accel_y_raw =  acc_x;
-  Accel_z_raw = -acc_z;
-  Roll_rate_raw  =  gyro_y;
-  Pitch_rate_raw =  gyro_x;
-  Yaw_rate_raw   = -gyro_z;
+  Accel_x_raw =   acc_y;
+  Accel_y_raw =   acc_x;
+  Accel_z_raw = - acc_z;
+  Roll_rate_raw  =   gyro_y;
+  Pitch_rate_raw =   gyro_x;
+  Yaw_rate_raw   = - gyro_z;
 
   if(Mode > AVERAGE_MODE)
   {
+    //400Hz
     Accel_x    = raw_ax_filter.update(Accel_x_raw, Interval_time);
     Accel_y    = raw_ay_filter.update(Accel_y_raw , Interval_time);
     Accel_z    = raw_az_filter.update(Accel_z_raw , Interval_time);
@@ -219,22 +391,107 @@ float sensor_read(void)
     Pitch_rate = raw_gy_filter.update(Pitch_rate_raw - Pitch_rate_offset, Interval_time);
     Yaw_rate   = raw_gz_filter.update(Yaw_rate_raw - Yaw_rate_offset, Interval_time);
 
-    Drone_ahrs.updateIMU( (Pitch_rate)*(float)RAD_TO_DEG, 
-                          (Roll_rate)*(float)RAD_TO_DEG,
-                         -(Yaw_rate)*(float)RAD_TO_DEG,
-                            Accel_y, Accel_x, -Accel_z);
-    Roll_angle  =  Drone_ahrs.getPitch()*(float)DEG_TO_RAD;
-    Pitch_angle =  Drone_ahrs.getRoll()*(float)DEG_TO_RAD;
-    Yaw_angle   = -Drone_ahrs.getYaw()*(float)DEG_TO_RAD;
+    Drone_ahrs.updateIMU( (Roll_rate)*(float)RAD_TO_DEG, 
+                          (Pitch_rate)*(float)RAD_TO_DEG,
+                          (Yaw_rate)*(float)RAD_TO_DEG,
+                          Accel_y, Accel_x, Accel_z);
 
-
-    //for debug
-    //USBSerial.printf("%6.3f %7.4f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f\n\r", 
-    //  Elapsed_time, Interval_time, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z);
-
-    //Get Altitude (30Hz)
+    Roll_angle  = Drone_ahrs.getRoll()*(float)DEG_TO_RAD;
+    Pitch_angle = Drone_ahrs.getPitch()*(float)DEG_TO_RAD;
+    Yaw_angle   = Drone_ahrs.getYaw()*(float)DEG_TO_RAD;
     Az = az_filter.update(-Accel_z_d, sens_interval);
 
+  //100Hz
+  //Optical flow and Magnetic  
+  if (opt_interval > 0.01)
+    {    
+      readMotionCount(&deltaY, &deltaX);
+      velocity_x = -(0.0254 * (float)deltaX * Altitude/11.914)/opt_interval;
+      velocity_y =  (0.0254 * (float)deltaY * Altitude/11.914)/opt_interval;
+      //外れ値処理
+      deff_velocity_x = velocity_x - old_velocity_x[1];
+      if ( deff_velocity_x > 2.0 )
+      {
+        velocity_x = old_velocity_x[1] + (old_velocity_x[1] - old_velocity_x[2])/2;
+      }
+      else if ( deff_velocity_x < -2.0 )
+      {
+        velocity_x = old_velocity_x[1] + (old_velocity_x[1] - old_velocity_x[2])/2;
+      }
+      else
+      {
+        old_velocity_x[3] = old_velocity_x[2];
+        old_velocity_x[2] = old_velocity_x[1];
+        old_velocity_x[1] = velocity_x;
+      }
+
+      deff_velocity_y = velocity_y - old_velocity_y[1];
+      if ( deff_velocity_y > 2.0 )
+      {
+        velocity_y = old_velocity_y[1] + (old_velocity_y[1] - old_velocity_y[2])/2;
+      }
+      else if ( deff_velocity_y < -2.0 )
+      {
+        velocity_y = old_velocity_y[1] + (old_velocity_y[1] - old_velocity_y[2])/2;
+      }
+      else
+      {
+        old_velocity_y[3] = old_velocity_y[2];
+        old_velocity_y[2] = old_velocity_y[1];
+        old_velocity_y[1] = velocity_y;
+      }
+
+      //USBSerial.printf("%7.2f %f %f %f %d %d\r\n", Elapsed_time, 
+      //        u_filter.update(velocity_x, opt_interval), 
+      //        v_filter.update(velocity_y, opt_interval), 
+      //        Altitude,
+      //        deltaY,
+      //        -deltaX);
+
+      accel[0] = Accel_x;
+      accel[1] = Accel_y;
+      accel[2] = Accel_z;
+      euler[0] = Roll_angle;
+      euler[1] = Pitch_angle;
+      euler[2] = Yaw_angle;
+
+      observtion[0] = velocity_x;
+      observtion[1] = velocity_y;
+      observtion[2] = Altitude;
+      
+      EstimatePosition.update(accel, euler, observtion, opt_interval);
+      opt_interval = 0.0;
+
+      //Mag
+      Mag.read_mag_data();
+      Mag.set_op_mode(BMM150_FORCED_MODE);
+      Mag_x_raw = - Mag.raw_mag_data.raw_datay;
+      Mag_y_raw =   Mag.raw_mag_data.raw_datax;
+      Mag_z_raw =   Mag.raw_mag_data.raw_dataz;
+
+      //USBSerial.printf("%f,%d,%d,%d\n\r",Elapsed_time ,Mag_x_raw, Mag_y_raw, Mag_z_raw);
+
+      double T,P;
+ 
+      if(result!=0){
+        delay(result);
+        result = Pressure.getTemperatureAndPressure(T,P);
+        
+          if(result!=0)
+          {
+            double A = Pressure.altitude(P,P0);
+            USBSerial.printf("%f %f %f %f %f\n\r",Elapsed_time, T, P, A, (float)dist/1000.0);
+          }
+          else USBSerial.println("Error.");
+      }
+      else USBSerial.println("Error.");
+
+      result = Pressure.startMeasurment();
+    }
+    else opt_interval = 0.0;
+
+    //30Hz
+    //Get Altitude
     if (dcnt>interval)
     {
       if(ToF_bottom_data_ready_flag)
@@ -242,7 +499,7 @@ float sensor_read(void)
         dcnt=0u;
         old_alt_time = alt_time;
         alt_time = micros()*1.0e-6;
-        h = alt_time - old_alt_time;
+        //h = alt_time - old_alt_time;
         ToF_bottom_data_ready_flag = 0;
 
         //距離の値の更新
@@ -265,12 +522,16 @@ float sensor_read(void)
           old_dist[2] = old_dist[1];
           old_dist[1] = dist;
         }
-        //USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",Elapsed_time,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
+        alt_sensing_time = micros()*1.0e-6- alt_time;
+
+        //USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",pos_interval*1000.0,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
       }
     }
     else dcnt++;
 
+    pos_time = micros()*1.0e-6;
     Altitude = alt_filter.update((float)dist/1000.0, Interval_time);
+    pos_interval = micros()*1.0e-6 - pos_time;
 
     //Alt_control_ok = 1;
     if(first_flag == 1) EstimatedAltitude.update(Altitude, Az, Interval_time);
@@ -278,6 +539,9 @@ float sensor_read(void)
     Altitude2 = EstimatedAltitude.Altitude;
     Alt_velocity = EstimatedAltitude.Velocity;
     Az_bias = EstimatedAltitude.Bias;
+
+
+
     //USBSerial.printf("Sens=%f Az=%f Altitude=%f Velocity=%f Bias=%f\n\r",Altitude, Az, Altitude2, Alt_velocity, Az_bias);
 
     //float Roll_angle = Roll_angle;
@@ -285,7 +549,7 @@ float sensor_read(void)
     //float Yaw_angle = Yaw_angle;
     //float sRoll_angle = sin(Roll_angle);
     //float cRoll = cos(Roll_angle);
-  // float stht = sin(tht);
+    // float stht = sin(tht);
     //float cPitch = cos(Pitch_angle);
     //float sYaw_angle = sin(Yaw_angle);
     //float sYaw_angle = cos(Yaw_angle);
@@ -294,69 +558,28 @@ float sensor_read(void)
     //Altitude2 = r33 * Altitude;
     //EstimatedAltitude.update(Altitude2, r33*Accel_z_raw)
 
-  }
+    
 
-  //Accel fail safe
-  acc_norm = sqrt(Accel_x*Accel_x + Accel_y*Accel_y + Accel_z_d*Accel_z_d);
-  Acc_norm = acc_filter.update(acc_norm ,Control_period);
-  if (Acc_norm>2.0) 
-  {
-    OverG_flag = 1;
-    if (Over_g == 0.0)Over_g = acc_norm;
-  }
+    //Accel fail safe
+    acc_norm = sqrt(Accel_x*Accel_x + Accel_y*Accel_y + Accel_z_d*Accel_z_d);
+    Acc_norm = acc_filter.update(acc_norm ,Control_period);
+    if (Acc_norm>2.0) 
+    {
+      OverG_flag = 1;
+      if (Over_g == 0.0)Over_g = acc_norm;
+    }
 
-  //Battery voltage check 
-  Voltage = ina3221.getVoltage(INA3221_CH2);
-  filterd_v = voltage_filter.update(Voltage, Control_period);
+    //Battery voltage check 
+    Voltage = ina3221.getVoltage(INA3221_CH2);
+    filterd_v = voltage_filter.update(Voltage, Control_period);
 
-  if(Under_voltage_flag != UNDER_VOLTAGE_COUNT){
-    if (filterd_v < POWER_LIMIT) Under_voltage_flag ++;
-    else Under_voltage_flag = 0;
-    if ( Under_voltage_flag > UNDER_VOLTAGE_COUNT) Under_voltage_flag = UNDER_VOLTAGE_COUNT;
+    if(Under_voltage_flag != UNDER_VOLTAGE_COUNT){
+      if (filterd_v < POWER_LIMIT) Under_voltage_flag ++;
+      else Under_voltage_flag = 0;
+      if ( Under_voltage_flag > UNDER_VOLTAGE_COUNT) Under_voltage_flag = UNDER_VOLTAGE_COUNT;
+    }
   }
-  /*
-  if (opt_interval > 0.1)
-  {
-    opt_interval = 0.0;
-    flow.readMotionCount(&deltaX, &deltaY);
-    USBSerial.printf("%f %d %d %f\r\n", Elapsed_time, deltaX, deltaY, Accel_z_raw);
-  }
-  */
-
   uint32_t et =micros();
   //USBSerial.printf("Sensor read %f %f %f\n\r", (mt-st)*1.0e-6, (et-mt)*1e-6, (et-st)*1.0e-6);
-
   return (et-st)*1.0e-6;
 }
-
-
-#if 0
-
-float range = 1.0f;
-
-float Roll_angle = 0.0f;
-float tht = 0.0f;
-float Yaw_angle = 0.0f;
-float sRoll_angle = sin(Roll_angle);
-float cRoll_angle = cos(Roll_angle);
-float stht = sin(tht);
-float ctht = cos(tht);
-float sYaw_angle = sin(Yaw_angle);
-float sYaw_angle = cos(Yaw_angle);
-
-float r11 =  ctht*cYaw_angle;
-float r12 =  sRoll_angle*stht*cYaw_angle - cRoll_angle*sYaw_angle;
-float r13 =  cRoll_angle*stht*cYaw_angle + sRoll_angle*sYaw_angle;
-
-float r21 =  ctht*sYaw_angle;
-float r22 =  sRoll_angle*stht*sYaw_angle + cRoll_angle*cYaw_angle;
-float r23 =  cRoll_angle*stht*sYaw_angle - sRoll_angle*cYaw_angle;
-
-float r31 = -stht;
-float r32 =  sRoll_angle*ctht;
-float r33 =  cRoll_angle*ctht;
-
-float x = r13*range;
-float y = r23*range;
-float z = r33*range;
-#endif

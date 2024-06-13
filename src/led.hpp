@@ -10,13 +10,14 @@
 #define GREEN 0x00ff00
 #define PERPLE 0xff00ff
 #define POWEROFFCOLOR 0x18EBF9
-#define FLIPCOLOR 0xFF9933
 
 #define PIN_LED_ONBORD 39
 #define PIN_LED_ESP    21
 #define NUM_LEDS   1
 
 extern uint32_t Led_color;
+extern uint32_t Led_color2;
+extern uint32_t Led_color3;
 
 void led_init(void);
 void led_show(void);

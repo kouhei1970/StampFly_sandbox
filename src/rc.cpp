@@ -25,17 +25,59 @@ volatile float Stick[16];
 volatile uint8_t Recv_MAC[3];
 
 // 受信コールバック
+//void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len) 
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len) 
+
 {
   Connect_flag=0;
 
   uint8_t* d_int;
-  //int16_t d_short;
+  int16_t d_short;
   float d_float;
+
+#ifdef MINIJOYC
+  d_int = (uint8_t*)&d_short;
+  d_int[0]=recv_data[0];
+  d_int[1]=recv_data[1];
+  Stick[RUDDER]=(float)d_short;
+
+  d_int[0]=recv_data[2];
+  d_int[1]=recv_data[3];
+  Stick[THROTTLE]=(float)d_short;
+
+  d_int = (uint8_t*)&d_float;
+  d_int[0] = recv_data[4];
+  d_int[1] = recv_data[5];
+  d_int[2] = recv_data[6];
+  d_int[3] = recv_data[7];
+  Stick[AILERON]  = d_float;
+
+  d_int[0] = recv_data[8];
+  d_int[1] = recv_data[9];
+  d_int[2] = recv_data[10];
+  d_int[3] = recv_data[11];
+  Stick[ELEVATOR]  = d_float;
+
+  Stick[BUTTON] = recv_data[12];
+  Stick[BUTTON_A] = recv_data[13];
+  Stick[CONTROLMODE] = recv_data[14];
+  
+  Stick[LOG] = 0.0;
+
+  //Normalize
+  Stick[RUDDER] /= -RUDDER_MAX;
+  Stick[THROTTLE] /= THROTTLE_MAX;
+  Stick[AILERON] /= (0.5*3.14159);
+  Stick[ELEVATOR] /= (0.5*3.14159);
+  if(Stick[THROTTLE]<0.0) Stick[THROTTLE]=0.0;
+
+#else
 
   Recv_MAC[0]=recv_data[0];
   Recv_MAC[1]=recv_data[1];
   Recv_MAC[2]=recv_data[2];
+
+//||(recv_data[1]!=MyMacAddr[4])||(recv_data[2]!=MyMacAddr[5]
 
   if ((recv_data[0]==MyMacAddr[3])&&(recv_data[1]==MyMacAddr[4])&&(recv_data[2]==MyMacAddr[5]))
   {
@@ -47,6 +89,7 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len)
     return;
   }
   
+
   d_int = (uint8_t*)&d_float;  
   d_int[0] = recv_data[3];
   d_int[1] = recv_data[4];
@@ -75,22 +118,26 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len)
   Stick[BUTTON_ARM] = recv_data[19];
   Stick[BUTTON_FLIP] = recv_data[20];
   Stick[CONTROLMODE] = recv_data[21];
-  Stick[ALTCONTROLMODE] = recv_data[22];
   
   Stick[LOG] = 0.0;
+
+  //Normalize
+  //Stick[RUDDER] /= -RUDDER_MAX_JOYC;
+  //Stick[THROTTLE] /= THROTTLE_MAX_JOYC;
+  //Stick[AILERON] /= (0.5*3.14159);
+  //Stick[ELEVATOR] /= (0.5*3.14159);
+  //if(Stick[THROTTLE]<0.0) Stick[THROTTLE]=0.0;
+#endif
   
-
-
 #if 0
-  USBSerial.printf("%6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f  %6.3f\n\r", 
+  USBSerial.printf("%6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f\n\r", 
                                             Stick[THROTTLE],
                                             Stick[AILERON],
                                             Stick[ELEVATOR],
                                             Stick[RUDDER],
-                                            Stick[BUTTON_ARM],
-                                            Stick[BUTTON_FLIP],
+                                            Stick[BUTTON],
+                                            Stick[BUTTON_A],
                                             Stick[CONTROLMODE],
-                                            Stick[ALTCONTROLMODE],
                                             Stick[LOG]);
 #endif
 }
@@ -134,11 +181,11 @@ void rc_init(void)
   esp_wifi_set_channel(CHANNEL, WIFI_SECOND_CHAN_NONE);
 
   //Send my MAC address
-  for (uint16_t i=0; i<20; i++)
+  for (uint16_t i=0; i<50; i++)
   {
     send_peer_info();
-    delay(50);
-    //USBSerial.printf("%d\n", i);
+    delay(10);
+    USBSerial.printf("%d\n", i);
   }
 
   // ESP-NOW再初期化
@@ -223,6 +270,7 @@ uint8_t rc_isconnected(void)
     if (Connect_flag<10)status = 1;
     else status = 0;
     //USBSerial.printf("%d \n\r", Connect_flag);
+
     return status;
 }
 

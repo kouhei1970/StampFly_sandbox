@@ -12,9 +12,19 @@
 #include <driver/spi_master.h>
 #include "driver/gpio.h"
 #include "sdkconfig.h"
+#include "imu.hpp"
+#include "tof.hpp"
+#include "opt.hpp"
+#include "opt_kalman.hpp"
+#include "i2c.hpp"
+#include "mag.hpp"
+#include "pressure.hpp"
 
+//#define SDA_PIN (46)
+//#define SCL_PIN (41)
 #define SDA_PIN (3)
 #define SCL_PIN (4)
+
 #define PIN_NUM_MISO (43)
 #define PIN_NUM_MOSI (14)
 #define PIN_NUM_CLK (44)
@@ -28,6 +38,7 @@ typedef struct {
 } eeprom_config_t;
 
 typedef struct eeprom_context_t* eeprom_handle_t;
+
 
 typedef struct
 {

@@ -3,8 +3,9 @@
 #include "rc.hpp"
 #include "flight_control.hpp"
 
+uint8_t LED_Off = 1;
 uint32_t Led_color = 0x000000;
-uint32_t Led_color2 = 255;
+uint32_t Led_color2 = 0x000000;
 uint32_t Led_color3 = 0x000000;
 uint16_t LedBlinkCounter=0;
 CRGB led_esp[1];
@@ -15,7 +16,6 @@ void onboard_led1(CRGB p, uint8_t state);
 void onboard_led2(CRGB p, uint8_t state);
 void esp_led(CRGB p, uint8_t state);
 
-
 void led_init(void)
 {
   FastLED.addLeds<WS2812, PIN_LED_ONBORD, GRB>(led_onboard, 2);
@@ -24,6 +24,12 @@ void led_init(void)
 
 void led_show(void)
 {
+  if (LED_Off)
+  {
+    onboard_led1((CRGB)0x000000, 0);
+    onboard_led2((CRGB)0x000000, 0);
+    esp_led((CRGB)0x000000,0);
+  }
   FastLED.show();
 }
 
@@ -76,8 +82,12 @@ void led_drive(void)
     }
   }
 
+  //Watch dog LED
+  //if ( Dt_time>2550u )onboard_led(RED, 1);
+
   //LED show
-  FastLED.show();
+  led_show();
+  //USBSerial.printf("Time delta %f\n\r", (Elapsed_time - Old_Elapsed_time) );
 }
 
 void onboard_led1(CRGB p, uint8_t state)
@@ -87,7 +97,7 @@ void onboard_led1(CRGB p, uint8_t state)
     led_onboard[0]=p;
   } 
   else {
-    led_onboard[0]=0;
+    led_onboard[0]=(CRGB)0;
   }
   return;
 }
@@ -99,7 +109,7 @@ void onboard_led2(CRGB p, uint8_t state)
     led_onboard[1]=p;
   } 
   else {
-    led_onboard[1]=0;
+    led_onboard[1]=(CRGB)0;
   }
   return;
 }
@@ -107,6 +117,6 @@ void onboard_led2(CRGB p, uint8_t state)
 void esp_led(CRGB p, uint8_t state)
 {
   if (state ==1) led_esp[0]=p;
-  else led_esp[0]=0;
+  else led_esp[0]=(CRGB)0;
   return;
 }

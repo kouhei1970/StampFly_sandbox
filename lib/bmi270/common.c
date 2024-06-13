@@ -8,8 +8,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "common.h"
+#include "../../src/spi_s3.hpp"
 //#include "bmi2_defs.h"
 
 //#include "driver/i2c.h"
@@ -41,8 +41,9 @@ struct bmi2_dev *pBmi270=&Bmi270;
 
 i2c_cmd_handle_t i2chandle;
 
+
 // SPIデバイスハンドラーを使って通信する
-spi_device_handle_t spidev;
+//spi_device_handle_t spidev;
 
 
 
@@ -146,7 +147,7 @@ BMI2_INTF_RETURN_TYPE bmi2_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, 
     putI2cBus();
     return Status;
 }
-
+/************************************************************************
 //SPIバスの設定
 spi_bus_config_t buscfg = {
     .mosi_io_num = PIN_NUM_MOSI,
@@ -166,19 +167,18 @@ spi_device_interface_config_t devcfg = {
     .duty_cycle_pos = 128,  // default 128 = 50%/50% duty
     .cs_ena_pretrans = 0, // 0 not used
     .cs_ena_posttrans = 0,  // 0 not used
-    .clock_speed_hz = SPI_MASTER_FREQ_8M,// 8,9,10,11,13,16,20,26,40,80
+    .clock_speed_hz = SPI_MASTER_FREQ_9M,// 8,9,10,11,13,16,20,26,40,80
     .spics_io_num = 46,
     .flags = 0,  // 0 not used
     .queue_size = 10,// transactionのキュー数。1以上の値を入れておく。
     .pre_cb = NULL,// transactionが始まる前に呼ばれる関数をセットできる
     .post_cb = NULL,// transactionが完了した後に呼ばれる関数をセットできる
 };
+***********************************************************************************/
 
-
+#if 0
 esp_err_t spi_init(void)
 {
-
-
     //Initialize the SPI bus
     esp_err_t ret = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
     if(ret != ESP_OK) return ret;
@@ -249,7 +249,8 @@ BMI2_INTF_RETURN_TYPE bmi2_spi_write(uint8_t reg_addr, const uint8_t *reg_data, 
 
     return ret;
 }
-
+/*******************************************************************************/
+#endif
 /*!
  * Delay function map to COINES platform
  */

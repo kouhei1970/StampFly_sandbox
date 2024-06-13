@@ -21,8 +21,7 @@ extern "C" {
 #include <driver/spi_master.h>
 #include "driver/gpio.h"
 #include "sdkconfig.h"
-
-
+#include "../../src/spi_s3.hpp"
 
 //#include "coines.h"
 

@@ -4,9 +4,11 @@
 #include <Arduino.h> 
 #include "common.h"
 #include "bmi2.h"
+//#include <spi.hpp>
 
 #define DPS20002RAD 34.90658504
 #define DPS10002RAD 17.4532925199
+#define BMI270_CHIP_ID 0x24
 
 void imu_init(void);
 void imu_test(void);

@@ -83,6 +83,8 @@ uint8_t _I2CBuffer[256];
 //#define I2C_SENSOR_ADDR 0x29
 
 int i2c_master_port = I2C_MASTER_NUM;
+
+#if 0
 i2c_config_t conf = {
     .mode = I2C_MODE_MASTER,
     .sda_io_num = I2C_MASTER_SDA_IO,         // select SDA GPIO specific to your project
@@ -92,6 +94,7 @@ i2c_config_t conf = {
     .master.clk_speed = I2C_MASTER_FREQ_HZ,  // select frequency specific to your project
     .clk_flags = 0,                          // optional; you can use I2C_SCLK_SRC_FLAG_* flags to choose i2c source clock here
 };
+#endif
 
 /* when not customized by application define dummy one */
 //#ifndef VL53LX_GetI2cBus
@@ -99,6 +102,7 @@ i2c_config_t conf = {
  */
 //#   define VL53LX_GetI2cBus(...) (void)0
 //#endif
+
 void VL53LX_GetI2cBus(void)
 {
     i2chandle = i2c_cmd_link_create();

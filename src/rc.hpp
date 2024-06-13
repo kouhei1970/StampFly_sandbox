@@ -6,7 +6,7 @@
 
 //#define MINIJOYC
 
-#define CHANNEL 11
+#define CHANNEL 3
 
 #define RUDDER 0
 #define ELEVATOR 1
@@ -20,7 +20,6 @@
 #define BUTTON_ARM 9
 #define BUTTON_FLIP 10
 #define CONTROLMODE 11
-#define ALTCONTROLMODE 12
 
 #define RUDDER_MAX 511
 #define RUDDER_MIN -512
@@ -53,5 +52,5 @@ extern volatile float Stick[16];
 extern volatile uint8_t Rc_err_flag;
 extern volatile uint8_t MyMacAddr[6];
 extern volatile uint8_t Recv_MAC[3];
-extern volatile uint16_t Connect_flag;
+
 #endif
