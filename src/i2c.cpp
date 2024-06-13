@@ -84,7 +84,7 @@ uint8_t i2c_endTransmission(void)
 
 uint8_t i2c_scan(void)
 {
-USBSerial.println ("I2C scanner. Scanning ...");
+  USBSerial.println ("I2C scanner. Scanning ...");
   delay(50);
   byte count = 0;
   for (uint8_t i = 1; i < 127; i++)

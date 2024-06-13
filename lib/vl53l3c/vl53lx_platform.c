@@ -373,18 +373,6 @@ VL53LX_Error VL53LX_GetTickCount(
 	VL53LX_TRACE_LEVEL_NONE, VL53LX_TRACE_FUNCTION_I2C, ##__VA_ARGS__)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 VL53LX_Error VL53LX_GetTimerFrequency(int32_t *ptimer_freq_hz)
 {
 	*ptimer_freq_hz = 0;
