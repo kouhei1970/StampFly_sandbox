@@ -479,7 +479,7 @@ void get_command(void)
 
   if (Control_mode == RATECONTROL)
   {
-    Roll_rate_reference = 240*PI/180*Roll_angle_command;
+    Roll_rate_reference  = 240*PI/180*Roll_angle_command;
     Pitch_rate_reference = 240*PI/180*Pitch_angle_command;
   }
 
@@ -528,7 +528,8 @@ void rate_control(void)
       if (Alt_flag == 1)
       {
         Thrust_command = (Thrust0 + z_dot_pid.update(z_dot_err, Interval_time))*BATTERY_VOLTAGE;
-        if (Thrust_command/BATTERY_VOLTAGE > 0.77f ) Thrust_command = BATTERY_VOLTAGE*0.77f;
+        if (Thrust_command/BATTERY_VOLTAGE > Thrust0*1.2f ) Thrust_command = BATTERY_VOLTAGE*Thrust0*1.2f;
+        if (Thrust_command/BATTERY_VOLTAGE < Thrust0*0.8f ) Thrust_command = BATTERY_VOLTAGE*Thrust0*0.8f;
       }
 
       //Motor Control
@@ -670,27 +671,27 @@ void angle_control(void)
       if (Flip_counter < flip_delay)
       {
         Roll_rate_reference = 0.0f;
-        Thrust_command = T_flip*1.2;
+        Thrust_command = T_flip*1.2f;
       }
       else if (Flip_counter < (flip_step/4 + flip_delay))
       {
         Roll_rate_reference = Roll_rate_reference + domega;
-        Thrust_command = T_flip*1.05;
+        Thrust_command = T_flip*1.05f;
       }
       else if (Flip_counter < (2*flip_step/4 + flip_delay))
       {
         Roll_rate_reference = Roll_rate_reference + domega;
-        Thrust_command = T_flip*1.0;
+        Thrust_command = T_flip*1.0f;
       }
       else if (Flip_counter < (3*flip_step/4 + flip_delay))
       {
         Roll_rate_reference = Roll_rate_reference - domega;
-        Thrust_command = T_flip*1.0;
+        Thrust_command = T_flip*1.0f;
       }
       else if (Flip_counter < (flip_step + flip_delay))
       {
         Roll_rate_reference = Roll_rate_reference - domega;
-        Thrust_command = T_flip*1.4;
+        Thrust_command = T_flip*1.4f;
       }
       else if (Flip_counter < (flip_step + flip_delay + 120) )
       {

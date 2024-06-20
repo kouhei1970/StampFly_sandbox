@@ -46,8 +46,8 @@ void led_drive(void)
     if(Alt_flag == 1) Led_color = 0x331155;
     if(Rc_err_flag == 1) Led_color = 0xff0000;
 
-    if (Under_voltage_flag < UNDER_VOLTAGE_COUNT) {onboard_led1(Led_color, 1);onboard_led2(Led_color, 1);}
-    else {onboard_led1(POWEROFFCOLOR,1);onboard_led1(POWEROFFCOLOR,1);}
+    if (Under_voltage_flag < UNDER_VOLTAGE_COUNT) {onboard_led1(Led_color, 1); onboard_led2(Led_color, 1);}
+    else {onboard_led1(POWEROFFCOLOR, 1); onboard_led2(Led_color, 1);}
   }
 
   else if (Mode == PARKING_MODE)
@@ -69,8 +69,8 @@ void led_drive(void)
     else
     {
       //水色点滅
-      if (LedBlinkCounter < 10) { onboard_led1(POWEROFFCOLOR,1);onboard_led2(POWEROFFCOLOR,1);}
-      else if (LedBlinkCounter < 200) { onboard_led1(POWEROFFCOLOR,0);onboard_led2(POWEROFFCOLOR,0);}
+      if (LedBlinkCounter < 10) { onboard_led1(POWEROFFCOLOR,1);onboard_led2(POWEROFFCOLOR, 1);}
+      else if (LedBlinkCounter < 200) { onboard_led1(POWEROFFCOLOR,0);onboard_led2(POWEROFFCOLOR, 0);}
       else LedBlinkCounter = 0;
       LedBlinkCounter ++;
     }
