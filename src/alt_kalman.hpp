@@ -51,7 +51,8 @@ class Alt_kalman
     float q1=1.5*1.5, q2=(1.0)*(1.0);//q1=1.5*1.5 q2=1.0*1.0
 
     //R
-    float R = 0.004*0.004;
+    //float R = 0.004*0.004;
+    float R = 0.008*0.008;
 
     public:
     //step

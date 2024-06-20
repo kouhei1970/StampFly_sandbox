@@ -3,6 +3,8 @@
 //
 // Desigend by Kouhei Ito 2023~2024
 //
+//Kanazawaブランチ
+//M5Stackに送ったバージョンのパラメータ修正や改善を行う
 
 #include "flight_control.hpp"
 #include "rc.hpp"
@@ -55,27 +57,27 @@ const float Yaw_rate_td = 0.01f;
 const float Yaw_rate_eta = 0.125f;
 
 //Angle control PID gain
-const float Rall_angle_kp = 8.0f;
+const float Rall_angle_kp = 7.0f;//8.0
 const float Rall_angle_ti = 4.0f;
 const float Rall_angle_td = 0.04f;
 const float Rall_angle_eta = 0.125f;
 
-const float Pitch_angle_kp = 8.0f;
+const float Pitch_angle_kp = 7.0f;//8.0
 const float Pitch_angle_ti = 4.0f;
 const float Pitch_angle_td = 0.04f;
 const float Pitch_angle_eta = 0.125f;
 
 //Altitude control PID gain
-const float alt_kp = 0.65f;
-const float alt_ti = 200.0f;
-const float alt_td = 0.0f;
+const float alt_kp = 0.65f;//0.65
+const float alt_ti = 200.0f;//200.0
+const float alt_td = 0.0f;//0.0
 const float alt_eta = 0.125f;
 const float alt_period = 0.0333;
 
 const float Thrust0_nominal = 0.63;
-const float z_dot_kp = 0.15f;
-const float z_dot_ti = 13.5f;
-const float z_dot_td = 0.005f;
+const float z_dot_kp = 0.15f;//0.15
+const float z_dot_ti = 13.5f;//13.5
+const float z_dot_td = 0.005f;//0.005
 const float z_dot_eta = 0.125f;
 
 //Times
@@ -167,7 +169,7 @@ float Z_dot_ref = 0.0f;
 
 //高度目標
 const float Alt_ref_min = 0.3;
-volatile float Alt_ref = 0.5;
+volatile float Alt_ref = Alt_ref_min;
 
 //Function declaration
 void init_pwm();
@@ -253,7 +255,8 @@ void loop_400Hz(void)
 
   //LED Drive
   led_drive();
-  
+
+  //USBSerial.printf("Mode=%d Alt_flag=%d\n\r", Mode, Alt_flag);
   //Begin Mode select
   if (Mode == INIT_MODE)
   {
@@ -315,7 +318,7 @@ void loop_400Hz(void)
     Throttle_control_mode = 0;
     Thrust_filtered.reset();
   }
-
+  
   //// Telemetry
   //telemetry400();
   //telemetry();
@@ -432,6 +435,7 @@ void get_command(void)
       
       if (Altitude2 < Alt_ref) 
       {
+        //USBSerial.printf("Alt=%f Alt_ref=%f\n\r", Altitude2, Alt_ref);
         Thrust0 = Thrust_command / BATTERY_VOLTAGE;
         alt_pid.reset();
         z_dot_pid.reset();
@@ -522,6 +526,7 @@ void rate_control(void)
       if (Alt_flag == 1)
       {
         Thrust_command = (Thrust0 + z_dot_pid.update(z_dot_err, Interval_time))*BATTERY_VOLTAGE;
+        if (Thrust_command/BATTERY_VOLTAGE > 0.77f ) Thrust_command = BATTERY_VOLTAGE*0.77f;
       }
 
       //Motor Control
@@ -610,6 +615,7 @@ void reset_angle_control(void)
     Pitch_rate_reference=0.0f;
     phi_pid.reset();
     theta_pid.reset();
+    //Alt_ref_filter.reset();
     phi_pid.set_error(Roll_angle_reference);
     theta_pid.set_error(Pitch_angle_reference);
     Flip_flag = 0;
@@ -725,7 +731,7 @@ void angle_control(void)
       theta_err = Pitch_angle_reference - (Pitch_angle - Pitch_angle_offset);
       alt_err = Alt_ref - Altitude2;
 
-      //Altitude COntrol PID
+      //Altitude Control PID
       Roll_rate_reference = phi_pid.update(phi_err, Interval_time);
       Pitch_rate_reference = theta_pid.update(theta_err, Interval_time);
       if(Alt_flag==1)Z_dot_ref = alt_pid.update(alt_err, Interval_time);
