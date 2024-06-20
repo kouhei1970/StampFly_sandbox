@@ -57,12 +57,12 @@ const float Yaw_rate_td = 0.01f;
 const float Yaw_rate_eta = 0.125f;
 
 //Angle control PID gain
-const float Rall_angle_kp = 7.0f;//8.0
+const float Rall_angle_kp = 8.0f;//8.0
 const float Rall_angle_ti = 4.0f;
 const float Rall_angle_td = 0.04f;
 const float Rall_angle_eta = 0.125f;
 
-const float Pitch_angle_kp = 7.0f;//8.0
+const float Pitch_angle_kp = 8.0f;//8.0
 const float Pitch_angle_ti = 4.0f;
 const float Pitch_angle_td = 0.04f;
 const float Pitch_angle_eta = 0.125f;
@@ -74,7 +74,7 @@ const float alt_td = 0.0f;//0.0
 const float alt_eta = 0.125f;
 const float alt_period = 0.0333;
 
-const float Thrust0_nominal = 0.63;
+const float Thrust0_nominal = 0.63f;//0.65
 const float z_dot_kp = 0.15f;//0.15
 const float z_dot_ti = 13.5f;//13.5
 const float z_dot_td = 0.005f;//0.005
@@ -255,7 +255,7 @@ void loop_400Hz(void)
 
   //LED Drive
   led_drive();
-
+  //if (Interval_time>0.006)USBSerial.printf("%9.6f\n\r", Interval_time);
   //USBSerial.printf("Mode=%d Alt_flag=%d\n\r", Mode, Alt_flag);
   //Begin Mode select
   if (Mode == INIT_MODE)
@@ -389,6 +389,8 @@ void control_init(void)
   Duty_fr.set_parameter(0.003, Control_period);
   Duty_rl.set_parameter(0.003, Control_period);
   Duty_rr.set_parameter(0.003, Control_period);
+
+  Thrust_filtered.set_parameter(0.02, Control_period);
 
 }
 ///////////////////////////////////////////////////////////////////
