@@ -5,6 +5,7 @@
 //
 //Kanazawaブランチ
 //M5Stackに送ったバージョンのパラメータ修正や改善を行う
+// 2024-06-20 高度制御改良　段差対応
 
 #include "flight_control.hpp"
 #include "rc.hpp"
@@ -402,8 +403,8 @@ void get_command(void)
   float throttle_limit = 0.7;
 
   Control_mode = Stick[CONTROLMODE];
-  if ( (uint8_t)Stick[ALTCONTROLMODE] == 5)Throttle_control_mode = 0;
-  else if((uint8_t)Stick[ALTCONTROLMODE] == 4)Throttle_control_mode = 1;
+  if ( (uint8_t)Stick[ALTCONTROLMODE] == AUTO_ALT ) Throttle_control_mode = 0;
+  else if( (uint8_t)Stick[ALTCONTROLMODE] == MANUAL_ALT) Throttle_control_mode = 1;
   else Throttle_control_mode = 0;
 
   //Thrust control
@@ -459,7 +460,8 @@ void get_command(void)
       {
         if ( (-0.2 < thlo) && (thlo < 0.2) )thlo = 0.0f ;//不感帯
         Alt_ref = Alt_ref + thlo*0.001;
-        if(Alt_ref<0.05)Alt_ref=0.05;
+        if(Alt_ref > 1.8 ) Alt_ref = 1.8;
+        if(Alt_ref < 0.05) Alt_ref = 0.05;
       }
     } 
   }
@@ -528,8 +530,8 @@ void rate_control(void)
       if (Alt_flag == 1)
       {
         Thrust_command = (Thrust0 + z_dot_pid.update(z_dot_err, Interval_time))*BATTERY_VOLTAGE;
-        if (Thrust_command/BATTERY_VOLTAGE > Thrust0*1.2f ) Thrust_command = BATTERY_VOLTAGE*Thrust0*1.2f;
-        if (Thrust_command/BATTERY_VOLTAGE < Thrust0*0.8f ) Thrust_command = BATTERY_VOLTAGE*Thrust0*0.8f;
+        if (Thrust_command/BATTERY_VOLTAGE > Thrust0*1.1f ) Thrust_command = BATTERY_VOLTAGE*Thrust0*1.1f;
+        if (Thrust_command/BATTERY_VOLTAGE < Thrust0*0.9f ) Thrust_command = BATTERY_VOLTAGE*Thrust0*0.9f;
       }
 
       //Motor Control

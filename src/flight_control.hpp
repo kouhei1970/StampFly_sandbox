@@ -22,6 +22,10 @@
 #define ANGLECONTROL 0
 #define RATECONTROL 1
 
+#define MANUAL_ALT 4
+#define AUTO_ALT 5
+
+
 //グローバル関数の宣言
 void init_copter(void);
 void loop_400Hz(void);
