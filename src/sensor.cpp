@@ -141,6 +141,9 @@ void sensor_init() {
     }
 
     tof_init();
+    //SPI init
+    if(spi_init()==ESP_OK){USBSerial.printf("SPI INIT Success!\n\r");}
+    else {USBSerial.printf("SPI INIT Success!\n\r");while(1);}
     imu_init();
     Drone_ahrs.begin(400.0);
     ina3221.begin(&Wire1);
