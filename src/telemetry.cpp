@@ -137,9 +137,9 @@ void make_telemetry_data(uint8_t* senddata)
   //data_set(senddata, RearLeft_motor_duty, index);
   data_set(senddata, Alt_ref, &index);                                  //23 Alt_ref
   data_set(senddata, Altitude2, &index);                                //24 Altitude2
-  data_set(senddata, Altitude, &index);                                 //25 Sense_Alt
-  data_set(senddata, Az, &index);                                       //26 Az
-  data_set(senddata, Az_bias, &index);                                  //27 Az_bias
+  data_set(senddata, Pos_x, &index);                                    //25 Pos_x
+  data_set(senddata, Pos_y, &index);                                    //26 Pos_y
+  data_set(senddata, Pos_z, &index);                                    //27 Pos_z
 }
 
 void telemetry400(void)

@@ -23,32 +23,24 @@
  * SOFTWARE.
  */
 
-#ifndef LED_HPP
-#define LED_HPP
+#ifndef IMU_HPP
+#define IMU_HPP
 
-#include <FastLED.h>
-#include <stdint.h>
+#include <Arduino.h>
+#include "common.h"
+#include "bmi2.h"
 
-#define WHITE         0xffffff
-#define BLUE          0x0000ff
-#define RED           0xff0000
-#define YELLOW        0xffff00
-#define GREEN         0x00ff00
-#define PERPLE        0xff00ff
-#define POWEROFFCOLOR 0x18EBF9
-#define FLIPCOLOR     0xFF9933
+#define DPS20002RAD 34.90658504
+#define DPS10002RAD 17.4532925199
 
-#define PIN_LED_ONBORD 39
-#define PIN_LED_ESP    21
-#define NUM_LEDS       1
-
-extern uint32_t Led_color;
-
-void led_init(void);
-void led_show(void);
-void led_drive(void);
-void onboard_led1(CRGB p, uint8_t state);
-void onboard_led2(CRGB p, uint8_t state);
-void esp_led(CRGB p, uint8_t state);
+void imu_init(void);
+void imu_test(void);
+void imu_update(void);
+float imu_get_acc_x(void);
+float imu_get_acc_y(void);
+float imu_get_acc_z(void);
+float imu_get_gyro_x(void);
+float imu_get_gyro_y(void);
+float imu_get_gyro_z(void);
 
 #endif
