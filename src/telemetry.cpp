@@ -132,11 +132,13 @@ void make_telemetry_data(uint8_t* senddata)
   data_set(senddata, Alt_velocity, &index);                             //19 Alt Velocity
   data_set(senddata, Z_dot_ref, &index);                                //20 Z_dot_ref
   //data_set(senddata, FrontRight_motor_duty, index);
-  data_set(senddata, FrontLeft_motor_duty, &index);                     //21 FrontLeft_motor_duty
-  data_set(senddata, RearRight_motor_duty, &index);                     //22 RearRight_motor_duty
+  //data_set(senddata, FrontLeft_motor_duty, &index);                     
+  //data_set(senddata, RearRight_motor_duty, &index);                     
   //data_set(senddata, RearLeft_motor_duty, index);
-  data_set(senddata, Alt_ref, &index);                                  //23 Alt_ref
-  data_set(senddata, Altitude2, &index);                                //24 Altitude2
+  data_set(senddata, (float)deltaX, &index);                            //21 deltaX
+  data_set(senddata, (float)deltaY, &index);                            //22 deltaY  
+  data_set(senddata, Vel_x, &index);                                    //23 Vel_x
+  data_set(senddata, Vel_y, &index);                                    //24 Vel_y
   data_set(senddata, Pos_x, &index);                                    //25 Pos_x
   data_set(senddata, Pos_y, &index);                                    //26 Pos_y
   data_set(senddata, Pos_z, &index);                                    //27 Pos_z

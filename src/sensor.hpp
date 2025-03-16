@@ -34,9 +34,11 @@
 #include <common.h>
 #include <stdint.h>
 #include "alt_kalman.hpp"
+#include "opt_kalman.hpp"
 #include <driver/spi_master.h>
 #include "driver/gpio.h"
 #include "sdkconfig.h"
+#include "opt.hpp"
 
 #define SDA_PIN      (3)
 #define SCL_PIN      (4)
@@ -96,6 +98,7 @@ extern volatile int16_t RangeFront;
 
 extern volatile float Pos_x, Pos_y, Pos_z;
 extern volatile float Vel_x, Vel_y, Vel_z;
+extern volatile int16_t deltaX, deltaY;
 
 void sensor_init(void);
 float sensor_read(void);
