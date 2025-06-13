@@ -158,7 +158,8 @@ BMI2_INTF_RETURN_TYPE bmi2_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, 
  *  @retval != BMI2_INTF_RET_SUCCESS  -> Failure Info
  *
  */
-BMI2_INTF_RETURN_TYPE bmi2_spi_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr);
+#if 0
+ BMI2_INTF_RETURN_TYPE bmi2_spi_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr);
 
 /*!
  *  @brief Function for writing the sensor's registers through SPI bus.
@@ -185,6 +186,7 @@ BMI2_INTF_RETURN_TYPE bmi2_spi_write(uint8_t reg_addr, const uint8_t *reg_data, 
  *  @return void.
  *
  */
+#endif
 void bmi2_delay_us(uint32_t period, void *intf_ptr);
 
 /*!
