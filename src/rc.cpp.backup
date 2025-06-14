@@ -24,15 +24,12 @@
  */
 
 #include "rc.hpp"
-#include <esp_wifi.h>
+#include <WiFi.h>
 #include <esp_now.h>
-#include <esp_netif.h>
-#include <esp_event.h>
+#include <esp_wifi.h>
 #include <esp_system.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <nvs_flash.h>
-#include <string.h>
 #include "flight_control.hpp"
 #include "serial_wrapper.hpp"
 
@@ -159,31 +156,14 @@ void rc_init(void) {
     // Initialize Stick list
     for (uint8_t i = 0; i < 16; i++) Stick[i] = 0.0;
 
-    // NVS初期化
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
+    // ESP-NOW初期化
+    WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
 
-    // ネットワークインターフェース初期化
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    // WiFi初期化
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_start());
-
-    // MACアドレス取得
-    ESP_ERROR_CHECK(esp_wifi_get_mac(WIFI_IF_STA, (uint8_t *)MyMacAddr));
+    WiFi.macAddress((uint8_t *)MyMacAddr);
     StampFlySerial.printf("MAC ADDRESS: %02X:%02X:%02X:%02X:%02X:%02X\r\n", MyMacAddr[0], MyMacAddr[1], MyMacAddr[2],
                      MyMacAddr[3], MyMacAddr[4], MyMacAddr[5]);
 
-    // ESP-NOW初期化
     if (esp_now_init() == ESP_OK) {
         StampFlySerial.println("ESPNow Init Success");
     } else {
@@ -207,6 +187,16 @@ void rc_init(void) {
         send_peer_info();
         vTaskDelay(pdMS_TO_TICKS(50));
         StampFlySerial.printf("%d\n", i);
+    }
+
+    // ESP-NOW再初期化
+    WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+    if (esp_now_init() == ESP_OK) {
+        StampFlySerial.println("ESPNow Init Success2");
+    } else {
+        StampFlySerial.println("ESPNow Init Failed2");
+        esp_restart();
     }
 
     // ESP-NOWコールバック登録

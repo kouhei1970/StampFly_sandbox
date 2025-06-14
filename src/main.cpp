@@ -1,13 +1,13 @@
-#include <Arduino.h>
-#include <FastLED.h>
 #include "flight_control.hpp"
+#include "serial_wrapper.hpp"
+#include "gpio_wrapper.hpp"
 #include "esp_log.h"
 
 // ESP-IDFのログ出力をシリアルに転送する関数
 static int esp_log_to_serial(const char *fmt, va_list args) {
   char buf[512];
   int ret = vsnprintf(buf, sizeof(buf), fmt, args);
-  USBSerial.print(buf);
+  StampFlySerial.print(buf);
   return ret;
 }
 

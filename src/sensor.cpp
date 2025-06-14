@@ -29,6 +29,8 @@
 #include "flight_control.hpp"
 #include "spi_s3.hpp"
 #include "i2c.hpp"
+#include "serial_wrapper.hpp"
+#include "gpio_wrapper.hpp"
 
 Madgwick Drone_ahrs;
 Alt_kalman EstimatedAltitude;
@@ -102,7 +104,7 @@ void test_voltage(void)
 {
     for (uint16_t i = 0; i < 1000; i++)
     {
-        USBSerial.printf("Voltage[%03d]:%f\n\r", i, ina3221.getVoltage(INA3221_CH2));
+        StampFlySerial.printf("Voltage[%03d]:%f\n\r", i, ina3221.getVoltage(INA3221_CH2));
     }
 }
 
@@ -115,32 +117,32 @@ void sensor_init()
 {
     // beep_init();
 
-    USBSerial.printf("Start Sensor Initilize!\r\n");
+    StampFlySerial.printf("Start Sensor Initilize!\r\n");
     if (i2c_master_init() == ESP_OK)
     {
-        USBSerial.printf("I2C INIT Success!\n\r");
+        StampFlySerial.printf("I2C INIT Success!\n\r");
     }
     else
     {
-        USBSerial.printf("I2C INIT failure!\n\r");
+        StampFlySerial.printf("I2C INIT failure!\n\r");
         while (1)
             ;
     }
     if (i2c_scan() == 0)
     {
-        USBSerial.printf("No I2C device!\r\n");
-        USBSerial.printf("Can not boot StampFly.\r\n");
+        StampFlySerial.printf("No I2C device!\r\n");
+        StampFlySerial.printf("Can not boot StampFly.\r\n");
         while (1)
             ;
     }
     // SPI init
     if (spi_init() == ESP_OK)
     {
-        USBSerial.printf("SPI INIT Success!\n\r");
+        StampFlySerial.printf("SPI INIT Success!\n\r");
     }
     else
     {
-        USBSerial.printf("SPI INIT failure!\n\r");
+        StampFlySerial.printf("SPI INIT failure!\n\r");
         while (1)
             ;
     }
@@ -149,8 +151,8 @@ void sensor_init()
 
     if (i2c_scan() == 0)
     {
-        USBSerial.printf("No I2C device!\r\n");
-        USBSerial.printf("Can not boot AtomFly2.\r\n");
+        StampFlySerial.printf("No I2C device!\r\n");
+        StampFlySerial.printf("Can not boot AtomFly2.\r\n");
         while (1)
             ;
     }
@@ -168,7 +170,7 @@ void sensor_init()
         {
             ToF_bottom_data_ready_flag = 0;
             cnt++;
-            USBSerial.printf("%d %d\n\r", cnt, tof_bottom_get_range());
+            StampFlySerial.printf("%d %d\n\r", cnt, tof_bottom_get_range());
         }
     }
     delay(10);

@@ -31,6 +31,7 @@ typedef struct{
     float magx;
     float magy;
     float magz;
+    float pressure;
     float voltage;
     uint16_t bottom_tof_range;
     uint16_t front_tof_range;

@@ -23,10 +23,12 @@
  * SOFTWARE.
  */
 
-#include <Arduino.h>
 #include "tof.hpp"
+#include "serial_wrapper.hpp"
+#include "gpio_wrapper.hpp"
 #include "esp_attr.h"
 #include "pid.hpp"
+#include <esp_timer.h>
 
 VL53LX_Dev_t tof_front;
 VL53LX_Dev_t tof_bottom;
@@ -76,67 +78,67 @@ void tof_init(void) {
     // USBSerial.printf("#tof_i2c_init_status:%d\r\n",vl53lx_i2c_init());
 
     // ToF Pin Initialize
-    pinMode(XSHUT_BOTTOM, OUTPUT);
-    pinMode(XSHUT_FRONT, OUTPUT);
-    pinMode(INT_BOTTOM, INPUT);
-    pinMode(INT_FRONT, INPUT);
-    pinMode(USER_A, INPUT_PULLUP);
+    pinMode((gpio_num_t)XSHUT_BOTTOM, OUTPUT);
+    pinMode((gpio_num_t)XSHUT_FRONT, OUTPUT);
+    pinMode((gpio_num_t)INT_BOTTOM, INPUT);
+    pinMode((gpio_num_t)INT_FRONT, INPUT);
+    pinMode((gpio_num_t)USER_A, INPUT_PULLUP);
 
     // フィルタの初期化
     tof_bottom_filter.set_parameter(0.005f, 0.0025f); // 時定数0.05秒
     tof_front_filter.set_parameter(0.005f, 0.0025f);  // 時定数0.05秒
     
     // ToF Disable
-    digitalWrite(XSHUT_BOTTOM, LOW);
-    digitalWrite(XSHUT_FRONT, LOW);
+    digitalWrite((gpio_num_t)XSHUT_BOTTOM, LOW);
+    digitalWrite((gpio_num_t)XSHUT_FRONT, LOW);
     delay(50);
 
     // Front ToF I2C address to 0x2A
     new_address = 0x2A; // New I2C address for front ToF
 
     //Front ToF Enable
-    digitalWrite(XSHUT_FRONT, HIGH);
+    digitalWrite((gpio_num_t)XSHUT_FRONT, HIGH);
     delay(50);
 
-    USBSerial.printf("Front ToF Address Change status %d\n\r",VL53LX_SetDeviceAddress( ToF_front, new_address<<1 ));
+    StampFlySerial.printf("Front ToF Address Change status %d\n\r",VL53LX_SetDeviceAddress( ToF_front, new_address<<1 ));
     ToF_front->i2c_slave_address = new_address; // Set new I2C address for front ToF
 
     // Bttom ToF Enable
-    digitalWrite(XSHUT_BOTTOM, HIGH);
+    digitalWrite((gpio_num_t)XSHUT_BOTTOM, HIGH);
     delay(50);
 
     // Bttom ToF setting
-    USBSerial.printf("#1 WaitDeviceBooted Status:%d\n\r", VL53LX_WaitDeviceBooted(ToF_bottom));
-    USBSerial.printf("#1 DataInit Status:%d\n\r", VL53LX_DataInit(ToF_bottom));
-    USBSerial.printf("#1 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_bottom, VL53LX_DISTANCEMODE_MEDIUM));
-    USBSerial.printf("#1 SetMeasurementTimingBuget Status:%d\n\r",
+    StampFlySerial.printf("#1 WaitDeviceBooted Status:%d\n\r", VL53LX_WaitDeviceBooted(ToF_bottom));
+    StampFlySerial.printf("#1 DataInit Status:%d\n\r", VL53LX_DataInit(ToF_bottom));
+    StampFlySerial.printf("#1 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_bottom, VL53LX_DISTANCEMODE_MEDIUM));
+    StampFlySerial.printf("#1 SetMeasurementTimingBuget Status:%d\n\r",
                      VL53LX_SetMeasurementTimingBudgetMicroSeconds(ToF_bottom, 33000));
-    USBSerial.printf("#1 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_bottom, 0x010F, &byteData));
-    USBSerial.printf("#1 VL53LX Model_ID: %02X\n\r", byteData);
-    USBSerial.printf("#1 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_bottom, 0x0110, &byteData));
-    USBSerial.printf("#1 VL53LX Module_Type: %02X\n\r", byteData);
-    USBSerial.printf("#1 RdWord Status:%d\n\r", VL53LX_RdWord(ToF_bottom, 0x010F, &wordData));
-    USBSerial.printf("#1 VL53LX: %04X\n\r", wordData);
+    StampFlySerial.printf("#1 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_bottom, 0x010F, &byteData));
+    StampFlySerial.printf("#1 VL53LX Model_ID: %02X\n\r", byteData);
+    StampFlySerial.printf("#1 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_bottom, 0x0110, &byteData));
+    StampFlySerial.printf("#1 VL53LX Module_Type: %02X\n\r", byteData);
+    StampFlySerial.printf("#1 RdWord Status:%d\n\r", VL53LX_RdWord(ToF_bottom, 0x010F, &wordData));
+    StampFlySerial.printf("#1 VL53LX: %04X\n\r", wordData);
 
     // Front ToF Setting
-    USBSerial.printf("#2 WaitDeviceBooted Status:%d\n\r", VL53LX_WaitDeviceBooted(ToF_front));
-    USBSerial.printf("#2 DataInit Status:%d\n\r", VL53LX_DataInit(ToF_front));
-    //USBSerial.printf("#2 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_front, VL53LX_DISTANCEMODE_LONG));
-    USBSerial.printf("#2 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_front, VL53LX_DISTANCEMODE_MEDIUM));
-    USBSerial.printf("#2 SetMeasurementTimingBuget Status:%d\n\r",
+    StampFlySerial.printf("#2 WaitDeviceBooted Status:%d\n\r", VL53LX_WaitDeviceBooted(ToF_front));
+    StampFlySerial.printf("#2 DataInit Status:%d\n\r", VL53LX_DataInit(ToF_front));
+    //StampFlySerial.printf("#2 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_front, VL53LX_DISTANCEMODE_LONG));
+    StampFlySerial.printf("#2 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_front, VL53LX_DISTANCEMODE_MEDIUM));
+    StampFlySerial.printf("#2 SetMeasurementTimingBuget Status:%d\n\r",
                      VL53LX_SetMeasurementTimingBudgetMicroSeconds(ToF_front, 33000));
-    USBSerial.printf("#2 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_front, 0x010F, &byteData));
-    USBSerial.printf("#2 VL53LX Model_ID: %02X\n\r", byteData);
-    USBSerial.printf("#2 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_front, 0x0110, &byteData));
-    USBSerial.printf("#2 VL53LX Module_Type: %02X\n\r", byteData);
-    USBSerial.printf("#2 RdWord Status:%d\n\r", VL53LX_RdWord(ToF_front, 0x010F, &wordData));
-    USBSerial.printf("#2 VL53LX: %04X\n\r", wordData);
+    StampFlySerial.printf("#2 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_front, 0x010F, &byteData));
+    StampFlySerial.printf("#2 VL53LX Model_ID: %02X\n\r", byteData);
+    StampFlySerial.printf("#2 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_front, 0x0110, &byteData));
+    StampFlySerial.printf("#2 VL53LX Module_Type: %02X\n\r", byteData);
+    StampFlySerial.printf("#2 RdWord Status:%d\n\r", VL53LX_RdWord(ToF_front, 0x010F, &wordData));
+    StampFlySerial.printf("#2 VL53LX: %04X\n\r", wordData);
 
-    attachInterrupt(INT_BOTTOM, &tof_int, FALLING);
+    attachInterrupt((gpio_num_t)INT_BOTTOM, &tof_int, FALLING);
 
     VL53LX_ClearInterruptAndStartMeasurement(ToF_bottom);
     delay(100);
-    USBSerial.printf("#Start Measurement Status:%d\n\r", VL53LX_StartMeasurement(ToF_bottom));
+    StampFlySerial.printf("#Start Measurement Status:%d\n\r", VL53LX_StartMeasurement(ToF_bottom));
 }
 
 int16_t tof_range_get(VL53LX_DEV dev) {
@@ -189,18 +191,18 @@ void tof_test_ranging(VL53LX_DEV dev) {
         status = VL53LX_ClearInterruptAndStartMeasurement(dev);
     }
     delay(100);
-    USBSerial.printf("#Start Measurement Status:%d\n\r", VL53LX_StartMeasurement(dev));
+    StampFlySerial.printf("#Start Measurement Status:%d\n\r", VL53LX_StartMeasurement(dev));
 
-    USBSerial.printf("#Count ObjNo Status Range Signal(Mcps) Ambient(Mcps)\n\r");
+    StampFlySerial.printf("#Count ObjNo Status Range Signal(Mcps) Ambient(Mcps)\n\r");
 
-    u_long st, now, old, end;
+    uint64_t st, now, old, end;
     uint16_t count;
-    st  = micros();
+    st  = esp_timer_get_time();
     now = st;
     old = st;
 
     count = 0;
-    USBSerial.printf("Start!\n\r");
+    StampFlySerial.printf("Start!\n\r");
     while (count < 500) {
         // VL53LX_WaitMeasurementDataReady(dev);
         // if(digitalRead(INT_BOTTOM)==0)
@@ -211,24 +213,24 @@ void tof_test_ranging(VL53LX_DEV dev) {
             count++;
             VL53LX_GetMultiRangingData(dev, pMultiRangingData);
             old                        = now;
-            now                        = micros();
+            now                        = esp_timer_get_time();
             uint8_t no_of_object_found = pMultiRangingData->NumberOfObjectsFound;
-            USBSerial.printf("%7.4f %7.4f ", (float)(now - st) * 1e-6, (float)(now - old) * 1e-6);
-            USBSerial.printf("%5d ", pMultiRangingData->StreamCount);
-            USBSerial.printf("%1d ", no_of_object_found);
+            StampFlySerial.printf("%7.4f %7.4f ", (float)(now - st) * 1e-6, (float)(now - old) * 1e-6);
+            StampFlySerial.printf("%5d ", pMultiRangingData->StreamCount);
+            StampFlySerial.printf("%1d ", no_of_object_found);
             for (uint8_t j = 0; j < no_of_object_found; j++) {
-                if (j != 0) USBSerial.printf("\n\r                     ");
-                USBSerial.printf("%d %5d %2.2f %2.2f ", MultiRangingData.RangeData[j].RangeStatus,
+                if (j != 0) StampFlySerial.printf("\n\r                     ");
+                StampFlySerial.printf("%d %5d %2.2f %2.2f ", MultiRangingData.RangeData[j].RangeStatus,
                                  MultiRangingData.RangeData[j].RangeMilliMeter,
                                  MultiRangingData.RangeData[j].SignalRateRtnMegaCps / 65536.0,
                                  MultiRangingData.RangeData[j].AmbientRateRtnMegaCps / 65536.0);
             }
 
             VL53LX_ClearInterruptAndStartMeasurement(dev);
-            end = micros();
-            USBSerial.printf("%8.6f", (float)(end - now) * 1.0e-6);
-            USBSerial.printf("\n\r");
+            end = esp_timer_get_time();
+            StampFlySerial.printf("%8.6f", (float)(end - now) * 1.0e-6);
+            StampFlySerial.printf("\n\r");
         }
     }
-    USBSerial.printf("End!\n\r");
+    StampFlySerial.printf("End!\n\r");
 }

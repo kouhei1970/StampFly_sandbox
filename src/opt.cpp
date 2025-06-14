@@ -1,5 +1,6 @@
 #include "opt.hpp"
 #include "spi_s3.hpp"
+#include "serial_wrapper.hpp"
 
 optconfig_t optconfig;
 
@@ -142,48 +143,48 @@ void enableFrameCaptureMode(void)
   //
   registerWrite(0x7F, 0x07);
   tmp = registerRead(0x7F);
-  USBSerial.printf("(07)%02X\n\r", tmp);
+  StampFlySerial.printf("(07)%02X\n\r", tmp);
   //
   registerWrite(0x41, 0x1D);
   tmp = registerRead(0x41);
-  USBSerial.printf("(1D)%02X\n\r", tmp);
+  StampFlySerial.printf("(1D)%02X\n\r", tmp);
   //
   registerWrite(0x4C, 0x00);
   tmp = registerRead(0x4C);
-  USBSerial.printf("(00)%02X\n\r", tmp);
+  StampFlySerial.printf("(00)%02X\n\r", tmp);
   //
   registerWrite(0x7F, 0x08);
   tmp = registerRead(0x7F);
-  USBSerial.printf("(08)%02X\n\r", tmp);
+  StampFlySerial.printf("(08)%02X\n\r", tmp);
   //
   registerWrite(0x6A, 0x38);
   tmp = registerRead(0x6A);
-  USBSerial.printf("(38)%02X\n\r", tmp);
+  StampFlySerial.printf("(38)%02X\n\r", tmp);
   //
   registerWrite(0x7F, 0x00);
   tmp = registerRead(0x7F);
-  USBSerial.printf("(00)%02X\n\r", tmp);
+  StampFlySerial.printf("(00)%02X\n\r", tmp);
   //
   registerWrite(0x55, 0x04);
   tmp = registerRead(0x55);
-  USBSerial.printf("(04)%02X\n\r", tmp);
+  StampFlySerial.printf("(04)%02X\n\r", tmp);
   //
   registerWrite(0x40, 0x80);
   tmp = registerRead(0x40);
-  USBSerial.printf("(80)%02X\n\r", tmp);
+  StampFlySerial.printf("(80)%02X\n\r", tmp);
   //
   registerWrite(0x4D, 0x11);
   tmp = registerRead(0x4D);
-  USBSerial.printf("(11)%02X\n\r", tmp);
+  StampFlySerial.printf("(11)%02X\n\r", tmp);
 
   //Step 2.
   registerWrite(0x70, 0x00); 
   tmp = registerRead(0x70);
-  USBSerial.printf("(00)%02X\n\r", tmp);
+  StampFlySerial.printf("(00)%02X\n\r", tmp);
   //
   registerWrite(0x58, 0xFF);
   tmp = registerRead(0x58);
-  USBSerial.printf("(FF)%02X\n\r", tmp);
+  StampFlySerial.printf("(FF)%02X\n\r", tmp);
 
   //Step 3. Poll RawData_Grab_Status register
   uint8_t buf;
@@ -197,7 +198,7 @@ void enableFrameCaptureMode(void)
     //USBSerial.printf("Register(0x59) %02X\n\r", buf);
   } while(buf == 0x00);
 
-  USBSerial.printf("PMW Status %X\n\r", status);
+  StampFlySerial.printf("PMW Status %X\n\r", status);
 
   delayMicroseconds(50);
 }
