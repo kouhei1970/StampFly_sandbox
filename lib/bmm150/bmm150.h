@@ -3,8 +3,9 @@
 
 
 /** Includes */
-#include <Arduino.h>
-#include <Wire.h>
+#include <stdint.h>
+#include <driver/i2c.h>
+#include <esp_err.h>
 #include "bmm150_defs.h"
 
 class BMM150 {
@@ -134,10 +135,12 @@ class BMM150 {
     struct bmm150_trim_registers trim_data;
 
 
-    void i2c_write(short address, short byte);
-    void i2c_read(short address, uint8_t* buffer, short length);
-    void i2c_read(short address, int8_t* buffer, short length);
-    uint8_t i2c_read(short address);
+    esp_err_t i2c_write(uint8_t reg_addr, uint8_t data);
+    esp_err_t i2c_read(uint8_t reg_addr, uint8_t* buffer, size_t length);
+    esp_err_t i2c_read(uint8_t reg_addr, int8_t* buffer, size_t length);
+    uint8_t i2c_read_byte(uint8_t reg_addr);
+    
+    uint8_t dev_addr = BMM150_I2C_Address; // デバイスアドレス
 
 };
 

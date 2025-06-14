@@ -158,25 +158,17 @@ volatile float Roll_angle_offset = 0.0f, Pitch_angle_offset = 0.0f, Yaw_angle_of
 volatile float Elevator_center = 0.0f, Aileron_center = 0.0f, Rudder_center = 0.0f;
 
 // Machine state & flag
-//float Timevalue          = 0.0f;
 volatile uint8_t Mode    = INIT_MODE;
 volatile uint8_t OldMode = INIT_MODE;
 uint8_t Control_mode     = ANGLECONTROL;
-// volatile uint8_t LockMode=0;
 float Motor_on_duty_threshold         = 0.1f;
 float Angle_control_on_duty_threshold = 0.5f;
-//int8_t BtnA_counter                   = 0;
-//uint8_t BtnA_on_flag                  = 0;
-//uint8_t BtnA_off_flag                 = 1;
 volatile uint8_t Loop_flag            = 0;
-// volatile uint8_t Angle_control_flag = 0;
-//uint8_t Stick_return_flag     = 0;
 uint8_t Throttle_control_mode = 0;
 uint8_t Landing_state         = 0;
 uint8_t OladRange0flag        = 0;//下降してない場合にスラストを減少するための変数
 
 // for flip
-//float FliRoll_rate_time          = 2.0;
 uint8_t Flip_flag                = 0;
 uint16_t Flip_counter            = 0;
 float Flip_time                  = 2.0;

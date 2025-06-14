@@ -1,7 +1,7 @@
 #ifndef _BMM150_DEFS_H_
 #define _BMM150_DEFS_H_
 
-#include <Arduino.h>
+#include <stdint.h>
 
 
 /**\name Macro definitions */

@@ -1,20 +1,19 @@
 #include "bmm150.h"
-#include <Arduino.h>
-#include <Wire.h>
+#include <driver/i2c.h>
+#include <esp_log.h>
+#include "../../src/i2c.hpp"
 
 
 BMM150::BMM150() {
 }
 
 int8_t BMM150::initialize(void) {
-    Wire1.begin();
-
     /* Power up the sensor from suspend to sleep mode */
     set_op_mode(BMM150_SLEEP_MODE);
-    delay(BMM150_START_UP_TIME);
+    vTaskDelay(pdMS_TO_TICKS(BMM150_START_UP_TIME));
 
     /* Check chip ID */
-    uint8_t id = i2c_read(BMM150_CHIP_ID_ADDR);
+    uint8_t id = i2c_read_byte(BMM150_CHIP_ID_ADDR);
     if (id != BMM150_CHIP_ID) {
         return BMM150_E_ID_NOT_CONFORM;
     }
@@ -288,65 +287,38 @@ void BMM150::set_z_rep(struct bmm150_settings settings) {
 void BMM150::soft_reset() {
     uint8_t reg_data;
 
-    reg_data = i2c_read(BMM150_POWER_CONTROL_ADDR);
+    reg_data = i2c_read_byte(BMM150_POWER_CONTROL_ADDR);
     reg_data = reg_data | BMM150_SET_SOFT_RESET;
     i2c_write(BMM150_POWER_CONTROL_ADDR, reg_data);
-    delay(BMM150_SOFT_RESET_DELAY);
+    vTaskDelay(pdMS_TO_TICKS(BMM150_SOFT_RESET_DELAY));
 }
 
 
 void BMM150::set_odr(struct bmm150_settings settings) {
     uint8_t reg_data;
 
-    reg_data = i2c_read(BMM150_OP_MODE_ADDR);
+    reg_data = i2c_read_byte(BMM150_OP_MODE_ADDR);
     /*Set the ODR value */
     reg_data = BMM150_SET_BITS(reg_data, BMM150_ODR, settings.data_rate);
     i2c_write(BMM150_OP_MODE_ADDR, reg_data);
 }
 
-void BMM150::i2c_write(short address, short data) {
-    Wire1.beginTransmission(BMM150_I2C_Address);
-    Wire1.write(address);
-    Wire1.write(data);
-    Wire1.endTransmission();
+esp_err_t BMM150::i2c_write(uint8_t reg_addr, uint8_t data) {
+    return i2c_write_reg8(dev_addr, reg_addr, &data, 1);
 }
 
-void BMM150::i2c_read(short address, uint8_t* buffer, short length) {
-    Wire1.beginTransmission(BMM150_I2C_Address);
-    Wire1.write(address);
-    Wire1.endTransmission();
-    Wire1.requestFrom(BMM150_I2C_Address, length);
-
-    if (Wire1.available() == length) {
-        for (uint8_t i = 0; i < length; i++) {
-            buffer[i] = Wire1.read();
-        }
-    }
+esp_err_t BMM150::i2c_read(uint8_t reg_addr, uint8_t* buffer, size_t length) {
+    return i2c_read_reg8(dev_addr, reg_addr, buffer, length);
 }
 
-
-void BMM150::i2c_read(short address, int8_t* buffer, short length) {
-    Wire1.beginTransmission(BMM150_I2C_Address);
-    Wire1.write(address);
-    Wire1.endTransmission();
-    Wire1.requestFrom(BMM150_I2C_Address, length);
-
-    if (Wire1.available() == length) {
-        for (uint8_t i = 0; i < length; i++) {
-            buffer[i] = Wire1.read();
-        }
-    }
+esp_err_t BMM150::i2c_read(uint8_t reg_addr, int8_t* buffer, size_t length) {
+    return i2c_read_reg8(dev_addr, reg_addr, (uint8_t*)buffer, length);
 }
 
-uint8_t BMM150::i2c_read(short address) {
-    uint8_t byte;
-
-    Wire1.beginTransmission(BMM150_I2C_Address);
-    Wire1.write(address);
-    Wire1.endTransmission();
-    Wire1.requestFrom(BMM150_I2C_Address, 1);
-    byte = Wire1.read();
-    return byte;
+uint8_t BMM150::i2c_read_byte(uint8_t reg_addr) {
+    uint8_t data;
+    i2c_read_reg8(dev_addr, reg_addr, &data, 1);
+    return data;
 }
 
 
@@ -394,7 +366,7 @@ void BMM150::set_op_mode(uint8_t pwr_mode) {
 void BMM150::suspend_to_sleep_mode(void) {
     set_power_control_bit(BMM150_POWER_CNTRL_ENABLE);
     /* Start-up time delay of 3ms*/
-    delay(3);
+    vTaskDelay(pdMS_TO_TICKS(3));
 }
 
 
@@ -431,7 +403,7 @@ void BMM150::read_trim_registers() {
 
 void BMM150::write_op_mode(uint8_t op_mode) {
     uint8_t reg_data = 0;
-    reg_data = i2c_read(BMM150_OP_MODE_ADDR);
+    reg_data = i2c_read_byte(BMM150_OP_MODE_ADDR);
     /* Set the op_mode value in Opmode bits of 0x4C */
     reg_data = BMM150_SET_BITS(reg_data, BMM150_OP_MODE, op_mode);
     i2c_write(BMM150_OP_MODE_ADDR, reg_data);
@@ -440,7 +412,7 @@ void BMM150::write_op_mode(uint8_t op_mode) {
 void BMM150::set_power_control_bit(uint8_t pwrcntrl_bit) {
     uint8_t reg_data = 0;
     /* Power control register 0x4B is read */
-    reg_data = i2c_read(BMM150_POWER_CONTROL_ADDR);
+    reg_data = i2c_read_byte(BMM150_POWER_CONTROL_ADDR);
     /* Sets the value of power control bit */
     reg_data = BMM150_SET_BITS_POS_0(reg_data, BMM150_PWR_CNTRL, pwrcntrl_bit);
     i2c_write(BMM150_POWER_CONTROL_ADDR, reg_data);

@@ -2,6 +2,7 @@
 #define STAMPFLY_HPP
 
 #include <stdint.h>
+#include "pid.hpp"
 
 //Mode
 #define INIT_MODE       0
@@ -27,8 +28,12 @@ typedef struct{
     float roll_angel;
     float pitch_angle;
     float yaw_angle;
+    float magx;
+    float magy;
+    float magz;
     float voltage;
     uint16_t bottom_tof_range;
+    uint16_t front_tof_range;
 }sensor_value_t;
 
 typedef struct{
@@ -51,9 +56,19 @@ typedef struct{
 }times_t;
 
 typedef struct{
+    PID roll_rate;
+    PID pitch_rate;
+    PID yaw_rate;
+    PID roll_angle;
+    PID pitch_angle;
+    PID yaw_angle;
+}pidstruct_t;
+
+typedef struct{
     sensor_value_t sensor;
     flag_t flag;
     counter_t counter;
+    pidstruct_t pid;
     times_t times;
 }stampfly_t;
 
