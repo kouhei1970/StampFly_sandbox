@@ -34,7 +34,7 @@
 #include <nvs_flash.h>
 #include <string.h>
 #include "flight_control.hpp"
-#include "serial_wrapper.hpp"
+#include "wrapper.hpp"
 
 // esp_now_peer_info_t slave;
 
@@ -73,7 +73,7 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len)
         peerInfo.channel = CHANNEL;
         peerInfo.encrypt = false;
         if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-            StampFlySerial.println("Failed to add peer2");
+            ESPSerial.println("Failed to add peer2");
             memset(TelemAddr, 0, 6);
         } else {
             esp_now_register_send_cb(on_esp_now_sent);
@@ -180,14 +180,14 @@ void rc_init(void) {
 
     // MACアドレス取得
     ESP_ERROR_CHECK(esp_wifi_get_mac(WIFI_IF_STA, (uint8_t *)MyMacAddr));
-    StampFlySerial.printf("MAC ADDRESS: %02X:%02X:%02X:%02X:%02X:%02X\r\n", MyMacAddr[0], MyMacAddr[1], MyMacAddr[2],
+    ESPSerial.printf("MAC ADDRESS: %02X:%02X:%02X:%02X:%02X:%02X\r\n", MyMacAddr[0], MyMacAddr[1], MyMacAddr[2],
                      MyMacAddr[3], MyMacAddr[4], MyMacAddr[5]);
 
     // ESP-NOW初期化
     if (esp_now_init() == ESP_OK) {
-        StampFlySerial.println("ESPNow Init Success");
+        ESPSerial.println("ESPNow Init Success");
     } else {
-        StampFlySerial.println("ESPNow Init Failed");
+        ESPSerial.println("ESPNow Init Failed");
         esp_restart();
     }
 
@@ -197,7 +197,7 @@ void rc_init(void) {
     peerInfo.channel = CHANNEL;
     peerInfo.encrypt = false;
     if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-        StampFlySerial.println("Failed to add peer");
+        ESPSerial.println("Failed to add peer");
         return;
     }
     esp_wifi_set_channel(CHANNEL, WIFI_SECOND_CHAN_NONE);
@@ -206,12 +206,12 @@ void rc_init(void) {
     for (uint16_t i = 0; i < 50; i++) {
         send_peer_info();
         vTaskDelay(pdMS_TO_TICKS(50));
-        StampFlySerial.printf("%d\n", i);
+        ESPSerial.printf("%d\n", i);
     }
 
     // ESP-NOWコールバック登録
     esp_now_register_recv_cb(OnDataRecv);
-    StampFlySerial.println("ESP-NOW Ready.");
+    ESPSerial.println("ESP-NOW Ready.");
 }
 
 void send_peer_info(void) {

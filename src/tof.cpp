@@ -24,8 +24,7 @@
  */
 
 #include "tof.hpp"
-#include "serial_wrapper.hpp"
-#include "gpio_wrapper.hpp"
+#include "wrapper.hpp"
 #include "esp_attr.h"
 #include "pid.hpp"
 #include <esp_timer.h>
@@ -78,67 +77,67 @@ void tof_init(void) {
     // USBSerial.printf("#tof_i2c_init_status:%d\r\n",vl53lx_i2c_init());
 
     // ToF Pin Initialize
-    pinMode((gpio_num_t)XSHUT_BOTTOM, OUTPUT);
-    pinMode((gpio_num_t)XSHUT_FRONT, OUTPUT);
-    pinMode((gpio_num_t)INT_BOTTOM, INPUT);
-    pinMode((gpio_num_t)INT_FRONT, INPUT);
-    pinMode((gpio_num_t)USER_A, INPUT_PULLUP);
+    wrapper_pinMode((gpio_num_t)XSHUT_BOTTOM, WRAPPER_OUTPUT);
+    wrapper_pinMode((gpio_num_t)XSHUT_FRONT, WRAPPER_OUTPUT);
+    wrapper_pinMode((gpio_num_t)INT_BOTTOM, WRAPPER_INPUT);
+    wrapper_pinMode((gpio_num_t)INT_FRONT, WRAPPER_INPUT);
+    wrapper_pinMode((gpio_num_t)USER_A, WRAPPER_INPUT_PULLUP);
 
     // フィルタの初期化
     tof_bottom_filter.set_parameter(0.005f, 0.0025f); // 時定数0.05秒
     tof_front_filter.set_parameter(0.005f, 0.0025f);  // 時定数0.05秒
     
     // ToF Disable
-    digitalWrite((gpio_num_t)XSHUT_BOTTOM, LOW);
-    digitalWrite((gpio_num_t)XSHUT_FRONT, LOW);
-    delay(50);
+    wrapper_digitalWrite((gpio_num_t)XSHUT_BOTTOM, WRAPPER_LOW);
+    wrapper_digitalWrite((gpio_num_t)XSHUT_FRONT, WRAPPER_LOW);
+    wrapper_delay(50);
 
     // Front ToF I2C address to 0x2A
     new_address = 0x2A; // New I2C address for front ToF
 
     //Front ToF Enable
-    digitalWrite((gpio_num_t)XSHUT_FRONT, HIGH);
-    delay(50);
+    wrapper_digitalWrite((gpio_num_t)XSHUT_FRONT, WRAPPER_HIGH);
+    wrapper_delay(50);
 
-    StampFlySerial.printf("Front ToF Address Change status %d\n\r",VL53LX_SetDeviceAddress( ToF_front, new_address<<1 ));
+    ESPSerial.printf("Front ToF Address Change status %d\n\r",VL53LX_SetDeviceAddress( ToF_front, new_address<<1 ));
     ToF_front->i2c_slave_address = new_address; // Set new I2C address for front ToF
 
     // Bttom ToF Enable
-    digitalWrite((gpio_num_t)XSHUT_BOTTOM, HIGH);
-    delay(50);
+    wrapper_digitalWrite((gpio_num_t)XSHUT_BOTTOM, WRAPPER_HIGH);
+    wrapper_delay(50);
 
     // Bttom ToF setting
-    StampFlySerial.printf("#1 WaitDeviceBooted Status:%d\n\r", VL53LX_WaitDeviceBooted(ToF_bottom));
-    StampFlySerial.printf("#1 DataInit Status:%d\n\r", VL53LX_DataInit(ToF_bottom));
-    StampFlySerial.printf("#1 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_bottom, VL53LX_DISTANCEMODE_MEDIUM));
-    StampFlySerial.printf("#1 SetMeasurementTimingBuget Status:%d\n\r",
+    ESPSerial.printf("#1 WaitDeviceBooted Status:%d\n\r", VL53LX_WaitDeviceBooted(ToF_bottom));
+    ESPSerial.printf("#1 DataInit Status:%d\n\r", VL53LX_DataInit(ToF_bottom));
+    ESPSerial.printf("#1 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_bottom, VL53LX_DISTANCEMODE_MEDIUM));
+    ESPSerial.printf("#1 SetMeasurementTimingBuget Status:%d\n\r",
                      VL53LX_SetMeasurementTimingBudgetMicroSeconds(ToF_bottom, 33000));
-    StampFlySerial.printf("#1 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_bottom, 0x010F, &byteData));
-    StampFlySerial.printf("#1 VL53LX Model_ID: %02X\n\r", byteData);
-    StampFlySerial.printf("#1 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_bottom, 0x0110, &byteData));
-    StampFlySerial.printf("#1 VL53LX Module_Type: %02X\n\r", byteData);
-    StampFlySerial.printf("#1 RdWord Status:%d\n\r", VL53LX_RdWord(ToF_bottom, 0x010F, &wordData));
-    StampFlySerial.printf("#1 VL53LX: %04X\n\r", wordData);
+    ESPSerial.printf("#1 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_bottom, 0x010F, &byteData));
+    ESPSerial.printf("#1 VL53LX Model_ID: %02X\n\r", byteData);
+    ESPSerial.printf("#1 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_bottom, 0x0110, &byteData));
+    ESPSerial.printf("#1 VL53LX Module_Type: %02X\n\r", byteData);
+    ESPSerial.printf("#1 RdWord Status:%d\n\r", VL53LX_RdWord(ToF_bottom, 0x010F, &wordData));
+    ESPSerial.printf("#1 VL53LX: %04X\n\r", wordData);
 
     // Front ToF Setting
-    StampFlySerial.printf("#2 WaitDeviceBooted Status:%d\n\r", VL53LX_WaitDeviceBooted(ToF_front));
-    StampFlySerial.printf("#2 DataInit Status:%d\n\r", VL53LX_DataInit(ToF_front));
-    //StampFlySerial.printf("#2 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_front, VL53LX_DISTANCEMODE_LONG));
-    StampFlySerial.printf("#2 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_front, VL53LX_DISTANCEMODE_MEDIUM));
-    StampFlySerial.printf("#2 SetMeasurementTimingBuget Status:%d\n\r",
+    ESPSerial.printf("#2 WaitDeviceBooted Status:%d\n\r", VL53LX_WaitDeviceBooted(ToF_front));
+    ESPSerial.printf("#2 DataInit Status:%d\n\r", VL53LX_DataInit(ToF_front));
+    //ESPSerial.printf("#2 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_front, VL53LX_DISTANCEMODE_LONG));
+    ESPSerial.printf("#2 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_front, VL53LX_DISTANCEMODE_MEDIUM));
+    ESPSerial.printf("#2 SetMeasurementTimingBuget Status:%d\n\r",
                      VL53LX_SetMeasurementTimingBudgetMicroSeconds(ToF_front, 33000));
-    StampFlySerial.printf("#2 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_front, 0x010F, &byteData));
-    StampFlySerial.printf("#2 VL53LX Model_ID: %02X\n\r", byteData);
-    StampFlySerial.printf("#2 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_front, 0x0110, &byteData));
-    StampFlySerial.printf("#2 VL53LX Module_Type: %02X\n\r", byteData);
-    StampFlySerial.printf("#2 RdWord Status:%d\n\r", VL53LX_RdWord(ToF_front, 0x010F, &wordData));
-    StampFlySerial.printf("#2 VL53LX: %04X\n\r", wordData);
+    ESPSerial.printf("#2 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_front, 0x010F, &byteData));
+    ESPSerial.printf("#2 VL53LX Model_ID: %02X\n\r", byteData);
+    ESPSerial.printf("#2 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_front, 0x0110, &byteData));
+    ESPSerial.printf("#2 VL53LX Module_Type: %02X\n\r", byteData);
+    ESPSerial.printf("#2 RdWord Status:%d\n\r", VL53LX_RdWord(ToF_front, 0x010F, &wordData));
+    ESPSerial.printf("#2 VL53LX: %04X\n\r", wordData);
 
     attachInterrupt((gpio_num_t)INT_BOTTOM, &tof_int, FALLING);
 
     VL53LX_ClearInterruptAndStartMeasurement(ToF_bottom);
-    delay(100);
-    StampFlySerial.printf("#Start Measurement Status:%d\n\r", VL53LX_StartMeasurement(ToF_bottom));
+    wrapper_delay(100);
+    ESPSerial.printf("#Start Measurement Status:%d\n\r", VL53LX_StartMeasurement(ToF_bottom));
 }
 
 int16_t tof_range_get(VL53LX_DEV dev) {
@@ -190,10 +189,10 @@ void tof_test_ranging(VL53LX_DEV dev) {
     if (status == 0) {
         status = VL53LX_ClearInterruptAndStartMeasurement(dev);
     }
-    delay(100);
-    StampFlySerial.printf("#Start Measurement Status:%d\n\r", VL53LX_StartMeasurement(dev));
+    wrapper_delay(100);
+    ESPSerial.printf("#Start Measurement Status:%d\n\r", VL53LX_StartMeasurement(dev));
 
-    StampFlySerial.printf("#Count ObjNo Status Range Signal(Mcps) Ambient(Mcps)\n\r");
+    ESPSerial.printf("#Count ObjNo Status Range Signal(Mcps) Ambient(Mcps)\n\r");
 
     uint64_t st, now, old, end;
     uint16_t count;
@@ -202,7 +201,7 @@ void tof_test_ranging(VL53LX_DEV dev) {
     old = st;
 
     count = 0;
-    StampFlySerial.printf("Start!\n\r");
+    ESPSerial.printf("Start!\n\r");
     while (count < 500) {
         // VL53LX_WaitMeasurementDataReady(dev);
         // if(digitalRead(INT_BOTTOM)==0)
@@ -215,12 +214,12 @@ void tof_test_ranging(VL53LX_DEV dev) {
             old                        = now;
             now                        = esp_timer_get_time();
             uint8_t no_of_object_found = pMultiRangingData->NumberOfObjectsFound;
-            StampFlySerial.printf("%7.4f %7.4f ", (float)(now - st) * 1e-6, (float)(now - old) * 1e-6);
-            StampFlySerial.printf("%5d ", pMultiRangingData->StreamCount);
-            StampFlySerial.printf("%1d ", no_of_object_found);
+            ESPSerial.printf("%7.4f %7.4f ", (float)(now - st) * 1e-6, (float)(now - old) * 1e-6);
+            ESPSerial.printf("%5d ", pMultiRangingData->StreamCount);
+            ESPSerial.printf("%1d ", no_of_object_found);
             for (uint8_t j = 0; j < no_of_object_found; j++) {
-                if (j != 0) StampFlySerial.printf("\n\r                     ");
-                StampFlySerial.printf("%d %5d %2.2f %2.2f ", MultiRangingData.RangeData[j].RangeStatus,
+                if (j != 0) ESPSerial.printf("\n\r                     ");
+                ESPSerial.printf("%d %5d %2.2f %2.2f ", MultiRangingData.RangeData[j].RangeStatus,
                                  MultiRangingData.RangeData[j].RangeMilliMeter,
                                  MultiRangingData.RangeData[j].SignalRateRtnMegaCps / 65536.0,
                                  MultiRangingData.RangeData[j].AmbientRateRtnMegaCps / 65536.0);
@@ -228,9 +227,9 @@ void tof_test_ranging(VL53LX_DEV dev) {
 
             VL53LX_ClearInterruptAndStartMeasurement(dev);
             end = esp_timer_get_time();
-            StampFlySerial.printf("%8.6f", (float)(end - now) * 1.0e-6);
-            StampFlySerial.printf("\n\r");
+            ESPSerial.printf("%8.6f", (float)(end - now) * 1.0e-6);
+            ESPSerial.printf("\n\r");
         }
     }
-    StampFlySerial.printf("End!\n\r");
+    ESPSerial.printf("End!\n\r");
 }

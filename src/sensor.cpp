@@ -29,8 +29,7 @@
 #include "flight_control.hpp"
 #include "spi_s3.hpp"
 #include "i2c.hpp"
-#include "serial_wrapper.hpp"
-#include "gpio_wrapper.hpp"
+#include "wrapper.hpp"
 
 Madgwick Drone_ahrs;
 Alt_kalman EstimatedAltitude;
@@ -104,7 +103,7 @@ void test_voltage(void)
 {
     for (uint16_t i = 0; i < 1000; i++)
     {
-        StampFlySerial.printf("Voltage[%03d]:%f\n\r", i, ina3221.getVoltage(INA3221_CH2));
+        ESPSerial.printf("Voltage[%03d]:%f\n\r", i, ina3221.getVoltage(INA3221_CH2));
     }
 }
 
@@ -117,32 +116,32 @@ void sensor_init()
 {
     // beep_init();
 
-    StampFlySerial.printf("Start Sensor Initilize!\r\n");
+    ESPSerial.printf("Start Sensor Initilize!\r\n");
     if (i2c_master_init() == ESP_OK)
     {
-        StampFlySerial.printf("I2C INIT Success!\n\r");
+        ESPSerial.printf("I2C INIT Success!\n\r");
     }
     else
     {
-        StampFlySerial.printf("I2C INIT failure!\n\r");
+        ESPSerial.printf("I2C INIT failure!\n\r");
         while (1)
             ;
     }
     if (i2c_scan() == 0)
     {
-        StampFlySerial.printf("No I2C device!\r\n");
-        StampFlySerial.printf("Can not boot StampFly.\r\n");
+        ESPSerial.printf("No I2C device!\r\n");
+        ESPSerial.printf("Can not boot StampFly.\r\n");
         while (1)
             ;
     }
     // SPI init
     if (spi_init() == ESP_OK)
     {
-        StampFlySerial.printf("SPI INIT Success!\n\r");
+        ESPSerial.printf("SPI INIT Success!\n\r");
     }
     else
     {
-        StampFlySerial.printf("SPI INIT failure!\n\r");
+        ESPSerial.printf("SPI INIT failure!\n\r");
         while (1)
             ;
     }
@@ -151,8 +150,8 @@ void sensor_init()
 
     if (i2c_scan() == 0)
     {
-        StampFlySerial.printf("No I2C device!\r\n");
-        StampFlySerial.printf("Can not boot AtomFly2.\r\n");
+        ESPSerial.printf("No I2C device!\r\n");
+        ESPSerial.printf("Can not boot AtomFly2.\r\n");
         while (1)
             ;
     }
@@ -170,7 +169,7 @@ void sensor_init()
         {
             ToF_bottom_data_ready_flag = 0;
             cnt++;
-            StampFlySerial.printf("%d %d\n\r", cnt, tof_bottom_get_range());
+            ESPSerial.printf("%d %d\n\r", cnt, tof_bottom_get_range());
         }
     }
     delay(10);

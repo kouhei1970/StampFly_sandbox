@@ -45,8 +45,7 @@
 #include "telemetry.hpp"
 #include "button.hpp"
 #include "buzzer.h"
-#include "serial_wrapper.hpp"
-#include "gpio_wrapper.hpp"
+#include "wrapper.hpp"
 
 // モータPWM出力Pinのアサイン
 // Motor PWM Pin
@@ -250,14 +249,14 @@ void init_copter(void)
     led_show();
 
     // Initialize Serial communication
-    StampFlySerial.begin(115200);
+    ESPSerial.begin(115200);
     delay(1500);
-    StampFlySerial.printf("Start StampFly!\r\n");
+    ESPSerial.printf("Start StampFly!\r\n");
 
     // Initialize PWM
     init_pwm();
     sensor_init();
-    StampFlySerial.printf("Finish sensor init!\r\n");
+    ESPSerial.printf("Finish sensor init!\r\n");
 
     // PID GAIN and etc. Init
     control_init();
@@ -277,8 +276,8 @@ void init_copter(void)
 
     setup_pwm_buzzer();
 
-    StampFlySerial.printf("Finish StampFly init!\r\n");
-    StampFlySerial.printf("Enjoy Flight!\r\n");
+    ESPSerial.printf("Finish StampFly init!\r\n");
+    ESPSerial.printf("Enjoy Flight!\r\n");
 
     // start_tone();
 }

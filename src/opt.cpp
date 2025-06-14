@@ -1,6 +1,6 @@
 #include "opt.hpp"
 #include "spi_s3.hpp"
-#include "serial_wrapper.hpp"
+#include "wrapper.hpp"
 
 optconfig_t optconfig;
 
@@ -8,14 +8,14 @@ optconfig_t optconfig;
 // SPI Write
 void registerWrite(uint8_t reg, uint8_t value) {
   spi_write(reg, &value, 1, &pmw);
-  delayMicroseconds(200);
+  wrapper_delayMicroseconds(200);
 }
 
 // SPI Read
 uint8_t registerRead(uint8_t reg) {
   uint8_t value;
   spi_read(reg, &value, 1, &pmw);
-  delayMicroseconds(200);
+  wrapper_delayMicroseconds(200);
   return value;
 }
 
@@ -82,7 +82,7 @@ void initRegisters(void)
   registerWrite(0x40, 0x41);
   registerWrite(0x70, 0x00);
 
-  delay(100);
+  wrapper_delay(100);
   registerWrite(0x32, 0x44);
   registerWrite(0x7F, 0x07);
   registerWrite(0x40, 0x40);
@@ -101,17 +101,17 @@ void initRegisters(void)
 
 uint8_t powerUp(optconfig_t* optconfig) {
   // Setup SPI port
-  delay(45);
-  digitalWrite(PMW_CS, HIGH);
-  delay(1);
-  digitalWrite(PMW_CS, LOW);
-  delay(1);
-  digitalWrite(PMW_CS, HIGH);
-  delay(1);
+  wrapper_delay(45);
+  wrapper_digitalWrite(PMW_CS, WRAPPER_HIGH);
+  wrapper_delay(1);
+  wrapper_digitalWrite(PMW_CS, WRAPPER_LOW);
+  wrapper_delay(1);
+  wrapper_digitalWrite(PMW_CS, WRAPPER_HIGH);
+  wrapper_delay(1);
 
   // Power on reset
   registerWrite(0x3A, 0x5A);
-  delay(5);
+  wrapper_delay(5);
   // Test the SPI communication, checking chipId and inverse chipId
   optconfig->chipid = registerRead(0x00);
   optconfig->dipihc = registerRead(0x5F);
@@ -124,7 +124,7 @@ uint8_t powerUp(optconfig_t* optconfig) {
   registerRead(0x04);
   registerRead(0x05);
   registerRead(0x06);
-  delay(1);
+  wrapper_delay(1);
   return true;
 }
 
@@ -143,48 +143,48 @@ void enableFrameCaptureMode(void)
   //
   registerWrite(0x7F, 0x07);
   tmp = registerRead(0x7F);
-  StampFlySerial.printf("(07)%02X\n\r", tmp);
+  ESPSerial.printf("(07)%02X\n\r", tmp);
   //
   registerWrite(0x41, 0x1D);
   tmp = registerRead(0x41);
-  StampFlySerial.printf("(1D)%02X\n\r", tmp);
+  ESPSerial.printf("(1D)%02X\n\r", tmp);
   //
   registerWrite(0x4C, 0x00);
   tmp = registerRead(0x4C);
-  StampFlySerial.printf("(00)%02X\n\r", tmp);
+  ESPSerial.printf("(00)%02X\n\r", tmp);
   //
   registerWrite(0x7F, 0x08);
   tmp = registerRead(0x7F);
-  StampFlySerial.printf("(08)%02X\n\r", tmp);
+  ESPSerial.printf("(08)%02X\n\r", tmp);
   //
   registerWrite(0x6A, 0x38);
   tmp = registerRead(0x6A);
-  StampFlySerial.printf("(38)%02X\n\r", tmp);
+  ESPSerial.printf("(38)%02X\n\r", tmp);
   //
   registerWrite(0x7F, 0x00);
   tmp = registerRead(0x7F);
-  StampFlySerial.printf("(00)%02X\n\r", tmp);
+  ESPSerial.printf("(00)%02X\n\r", tmp);
   //
   registerWrite(0x55, 0x04);
   tmp = registerRead(0x55);
-  StampFlySerial.printf("(04)%02X\n\r", tmp);
+  ESPSerial.printf("(04)%02X\n\r", tmp);
   //
   registerWrite(0x40, 0x80);
   tmp = registerRead(0x40);
-  StampFlySerial.printf("(80)%02X\n\r", tmp);
+  ESPSerial.printf("(80)%02X\n\r", tmp);
   //
   registerWrite(0x4D, 0x11);
   tmp = registerRead(0x4D);
-  StampFlySerial.printf("(11)%02X\n\r", tmp);
+  ESPSerial.printf("(11)%02X\n\r", tmp);
 
   //Step 2.
   registerWrite(0x70, 0x00); 
   tmp = registerRead(0x70);
-  StampFlySerial.printf("(00)%02X\n\r", tmp);
+  ESPSerial.printf("(00)%02X\n\r", tmp);
   //
   registerWrite(0x58, 0xFF);
   tmp = registerRead(0x58);
-  StampFlySerial.printf("(FF)%02X\n\r", tmp);
+  ESPSerial.printf("(FF)%02X\n\r", tmp);
 
   //Step 3. Poll RawData_Grab_Status register
   uint8_t buf;
@@ -192,15 +192,15 @@ void enableFrameCaptureMode(void)
 
   do 
   {
-    delay(1);
+    wrapper_delay(1);
     buf = registerRead(0x59);
     status = buf>>6;
     //USBSerial.printf("Register(0x59) %02X\n\r", buf);
   } while(buf == 0x00);
 
-  StampFlySerial.printf("PMW Status %X\n\r", status);
+  ESPSerial.printf("PMW Status %X\n\r", status);
 
-  delayMicroseconds(50);
+  wrapper_delayMicroseconds(50);
 }
 
 void readImage(uint8_t *image)
