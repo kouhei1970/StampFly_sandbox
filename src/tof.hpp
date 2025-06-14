@@ -29,12 +29,16 @@
 #include <stdint.h>
 #include <vl53lx_api.h>
 #include <vl53lx_platform.h>
+#include "pid.hpp"
 
 #define INT_BOTTOM   6
 #define XSHUT_BOTTOM 7
 #define INT_FRONT    8
 #define XSHUT_FRONT  9
 #define USER_A       0
+
+extern Filter tof_bottom_filter;
+extern Filter tof_front_filter;
 
 void tof_init(void);
 int16_t tof_range_get(VL53LX_DEV dev);

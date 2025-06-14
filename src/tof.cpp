@@ -26,12 +26,16 @@
 #include <Arduino.h>
 #include "tof.hpp"
 #include "esp_attr.h"
+#include "pid.hpp"
 
 VL53LX_Dev_t tof_front;
 VL53LX_Dev_t tof_bottom;
 
 VL53LX_DEV ToF_front  = &tof_front;
 VL53LX_DEV ToF_bottom = &tof_bottom;
+
+Filter tof_bottom_filter;
+Filter tof_front_filter;
 
 volatile uint8_t ToF_bottom_data_ready_flag;
 #if 1
@@ -41,11 +45,17 @@ void IRAM_ATTR tof_int() {
 #endif
 
 int16_t tof_bottom_get_range() {
-    return tof_range_get(ToF_bottom);
+    int16_t raw_range = tof_range_get(ToF_bottom);
+    return raw_range;
+    // サンプリング時間は0.0025秒（400Hz）と仮定
+    //return (int16_t)tof_bottom_filter.update((float)raw_range, 0.0025f);
 }
 
 int16_t tof_front_get_range() {
-    return tof_range_get(ToF_front);
+    int16_t raw_range = tof_range_get(ToF_front);
+    return raw_range;
+    // サンプリング時間は0.0025秒（400Hz）と仮定
+    //return (int16_t)tof_front_filter.update((float)raw_range, 0.0025f);
 }
 
 void tof_init(void) {
@@ -72,6 +82,10 @@ void tof_init(void) {
     pinMode(INT_FRONT, INPUT);
     pinMode(USER_A, INPUT_PULLUP);
 
+    // フィルタの初期化
+    tof_bottom_filter.set_parameter(0.005f, 0.0025f); // 時定数0.05秒
+    tof_front_filter.set_parameter(0.005f, 0.0025f);  // 時定数0.05秒
+    
     // ToF Disable
     digitalWrite(XSHUT_BOTTOM, LOW);
     digitalWrite(XSHUT_FRONT, LOW);
@@ -124,63 +138,44 @@ void tof_init(void) {
     delay(100);
     USBSerial.printf("#Start Measurement Status:%d\n\r", VL53LX_StartMeasurement(ToF_bottom));
 }
-#if 0
-int16_t tof_range_get(VL53LX_DEV dev) {
-    int16_t range;
-    int16_t range_min;
-    int16_t range_max;
-    int16_t range_ave;
-    uint8_t count;
-
-    VL53LX_RangingMeasurementData_t data;
-
-    VL53LX_GetRangingData(dev, &data);
-    range = data.RangeMilliMeter;
-    VL53LX_ClearInterruptAndStartMeasurement(dev);
-    return range;
-}
-#endif
-
 
 int16_t tof_range_get(VL53LX_DEV dev) {
-    int16_t range;
-    int16_t range_min;
-    int16_t range_max;
-    int16_t range_ave;
-    uint8_t count;
+    static int16_t last_valid_range = 10; // 初期値として10mmを設定
+    int16_t range_ave = 0;
+    uint8_t count = 0;
+    bool valid_measurement = false;
 
     VL53LX_MultiRangingData_t MultiRangingData;
     VL53LX_MultiRangingData_t *pMultiRangingData = &MultiRangingData;
 
-    // uint32_t start_time = micros();
+    // マルチレンジングデータの取得
     VL53LX_GetMultiRangingData(dev, pMultiRangingData);
-    // uint32_t end_time = micros();
-    // USBSerial.printf("ToF Time%f\n", (float)(end_time - start_time)*1.0e-6);
     uint8_t no_of_object_found = pMultiRangingData->NumberOfObjectsFound;
-    // USBSerial.printf("Total N=%d ",no_of_object_found);
-    range_min = 10000;
-    range_max = 0;
-    range_ave = 0;
-    if (no_of_object_found == 0) {
-        range_min = 9999;
-        range_max = 0;
-    } else {
+    
+    // 有効な測定値の平均を計算
+    if (no_of_object_found > 0) {
+        int32_t sum = 0;
         count = 0;
+        
         for (uint8_t j = 0; j < no_of_object_found; j++) {
             if (MultiRangingData.RangeData[j].RangeStatus == VL53LX_RANGESTATUS_RANGE_VALID) {
+                sum += MultiRangingData.RangeData[j].RangeMilliMeter;
                 count++;
-                range = MultiRangingData.RangeData[j].RangeMilliMeter;
-                if (range_min > range) range_min = range;
-                if (range_max < range) range_max = range;
-                range_ave = range_ave + range;
             }
-            // USBSerial.printf("No %d Status=%d Range %d mm ",j+1, MultiRangingData.RangeData[j].RangeStatus, range);
         }
-        // USBSerial.printf("Max %d mm\n\r", range_max);
-        if (count != 0) range_ave = range_ave / count;
+        
+        if (count > 0) {
+            range_ave = sum / count; // 有効な測定値の平均
+            last_valid_range = range_ave; // 有効な測定値を保存
+            valid_measurement = true;
+        }
     }
+    
+    // 次の測定を開始
     VL53LX_ClearInterruptAndStartMeasurement(dev);
-    return range_max;
+    
+    // 有効な測定がなかった場合は前回の有効な測定値を返す
+    return valid_measurement ? range_ave : last_valid_range;
 }
 
 void tof_test_ranging(VL53LX_DEV dev) {

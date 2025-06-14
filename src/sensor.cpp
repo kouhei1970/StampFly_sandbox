@@ -79,30 +79,6 @@ volatile uint8_t Under_voltage_flag = 0;
 // volatile uint8_t ToF_bottom_data_ready_flag;
 // volatile uint16_t Range=1000;
 
-#if 0
-uint8_t scan_i2c() {
-    USBSerial.println("I2C scanner. Scanning ...");
-    delay(50);
-    byte count = 0;
-    for (uint8_t i = 1; i < 127; i++) {
-        Wire1.beginTransmission(i);        // Begin I2C transmission Address (i)
-        if (Wire1.endTransmission() == 0)  // Receive 0 = success (ACK response)
-        {
-            USBSerial.print("Found address: ");
-            USBSerial.print(i, DEC);
-            USBSerial.print(" (0x");
-            USBSerial.print(i, HEX);
-            USBSerial.println(")");
-            count++;
-        }
-    }
-    USBSerial.print("Found ");
-    USBSerial.print(count, DEC);  // numbers of devices
-    USBSerial.println(" device(s).");
-    return count;
-}
-#endif
-
 void sensor_reset_offset(void)
 {
     Roll_rate_offset = 0.0f;
