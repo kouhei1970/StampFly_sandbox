@@ -25,25 +25,6 @@ void imu_init(void)
   ESPSerial.printf("#Config Status:%d\n\r", set_accel_gyro_config(pBmi270));
   uint8_t sensor_list[2] = { BMI2_ACCEL, BMI2_GYRO };
   ESPSerial.printf("#Sensor enable Status:%d\n\r", bmi2_sensor_enable(sensor_list, 2, pBmi270));
-
-  #if 0
-  //BMI270使用の試行錯誤の跡
-  uint8_t w_data[2]={3,5};
-  USBSerial.printf("#Read status:%d\n\r",bmi2_get_regs(0x00, &data, 1, pBmi270));  
-  USBSerial.printf("#Chicp ID:%02X\n\r", data);
-
-  USBSerial.printf("#Read status:%d\n\r",bmi2_get_regs(0x7C, &data, 1, pBmi270));  
-  USBSerial.printf("#ADR 0x7C:%02X=0x03\n\r", data);
-  USBSerial.printf("#Read status:%d\n\r",bmi2_get_regs(0x7D, &data, 1, pBmi270));  
-  USBSerial.printf("#ADR 0x7D:%02X=0x00\n\r", data);
-
-  USBSerial.printf("#Write status:%d\n\r",bmi2_set_regs(0x7C, w_data, 2, pBmi270));  
-  
-  USBSerial.printf("#Read status:%d\n\r",bmi2_get_regs(0x7C, &data, 1, pBmi270));  
-  USBSerial.printf("#ADR 0x7C:%02X=0x03\n\r", data);
-  USBSerial.printf("#Read status:%d\n\r",bmi2_get_regs(0x7D, &data, 1, pBmi270));  
-  USBSerial.printf("#ADR 0x7D:%02X=0x00\n\r", data);
-  #endif
 }
 
 void imu_update(void)
