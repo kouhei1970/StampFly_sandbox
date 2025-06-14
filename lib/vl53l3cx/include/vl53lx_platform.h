@@ -1,41 +1,23 @@
-/*******************************************************************************
- Copyright (C) 2016, STMicroelectronics International N.V.
- All rights reserved.
 
- Redistribution and use in source and binary forms, with or without
- modification, are permitted provided that the following conditions are met:
- * Redistributions of source code must retain the above copyright
- notice, this list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright
- notice, this list of conditions and the following disclaimer in the
- documentation and/or other materials provided with the distribution.
- * Neither the name of STMicroelectronics nor the
- names of its contributors may be used to endorse or promote products
- derived from this software without specific prior written permission.
+/* SPDX-License-Identifier: GPL-2.0+ OR BSD-3-Clause */
+/******************************************************************************
+ * Copyright (c) 2020, STMicroelectronics - All Rights Reserved
 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
- NON-INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS ARE DISCLAIMED.
- IN NO EVENT SHALL STMICROELECTRONICS INTERNATIONAL N.V. BE LIABLE FOR ANY
- DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- ******************************************************************************/
-
+ This file is part of VL53LX and is dual licensed,
+ either GPL-2.0+
+ or 'BSD 3-clause "New" or "Revised" License' , at your option.
+ ******************************************************************************
+ */
 
 #ifndef _VL53LX_PLATFORM_H_
 #define _VL53LX_PLATFORM_H_
 
-#include <vl53lx_platform_log.h>
 #include "vl53lx_ll_def.h"
+#include "vl53lx_platform_log.h"
 
 #define VL53LX_IPP_API
-#include <vl53lx_platform_ipp_imports.h>
-#include <vl53lx_platform_user_data.h>
+#include "vl53lx_platform_ipp_imports.h"
+#include "vl53lx_platform_user_data.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -43,12 +25,12 @@ extern "C"
 #endif
 
 /**
- * @file   VL53LX_platform.h
+ * @file   vl53lx_platform.h
  *
  * @brief  All end user OS/platform/application porting
  */
 
-int vl53lx_i2c_init(void);
+
 
 /**
  * @brief  Initialise platform comms.
@@ -325,7 +307,7 @@ VL53LX_Error VL53LX_GpioSetValue(uint8_t pin, uint8_t value);
  * @return  "Other error code"    See ::VL53LX_Error
  */
 
-VL53LX_Error VL53LX_GpioGetValue(uint8_t pin, uint8_t* pvalue);
+VL53LX_Error VL53LX_GpioGetValue(uint8_t pin, uint8_t *pvalue);
 
 
 /**
@@ -341,7 +323,7 @@ VL53LX_Error VL53LX_GpioXshutdown(uint8_t value);
 
 
 /**
- * @brief Sets and clears the Comms Mode pin (NCS) on the Ewok 
+ * @brief Sets and clears the Comms Mode pin (NCS) on the Ewok
  *
  * @param  value - the value for comms select - 0 = I2C, 1 = SPI
  *
@@ -353,7 +335,7 @@ VL53LX_Error VL53LX_GpioCommsSelect(uint8_t value);
 
 
 /**
- * @brief Enables and disables the power to the Ewok module 
+ * @brief Enables and disables the power to the Ewok module
  *
  * @param  value - the state of the power supply - 0 = power off, 1 = power on
  *
@@ -372,7 +354,7 @@ VL53LX_Error VL53LX_GpioPowerEnable(uint8_t value);
  * @return  VL53LX_ERROR_NONE     Success
  * @return  "Other error code"    See ::VL53LX_Error
  */
- 
+
 VL53LX_Error  VL53LX_GpioInterruptEnable(void (*function)(void), uint8_t edge_type);
 
 
@@ -382,13 +364,14 @@ VL53LX_Error  VL53LX_GpioInterruptEnable(void (*function)(void), uint8_t edge_ty
  * @return  VL53LX_ERROR_NONE     Success
  * @return  "Other error code"    See ::VL53LX_Error
  */
- 
+
 VL53LX_Error  VL53LX_GpioInterruptDisable(void);
 
 
 /*
  * @brief Gets current system tick count in [ms]
  *
+ * @param[in]   pdev          : pointer to device structure (device handle)
  * @return  time_ms : current time in [ms]
  *
  * @return  VL53LX_ERROR_NONE     Success
@@ -396,8 +379,8 @@ VL53LX_Error  VL53LX_GpioInterruptDisable(void);
  */
 
 VL53LX_Error VL53LX_GetTickCount(
-	VL53LX_DEV Dev,
-	uint32_t *ptime_ms);
+		VL53LX_Dev_t *pdev,
+		uint32_t *ptime_ms);
 
 
 /**

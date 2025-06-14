@@ -25,6 +25,7 @@
 
 #include <Arduino.h>
 #include "tof.hpp"
+#include "esp_attr.h"
 
 VL53LX_Dev_t tof_front;
 VL53LX_Dev_t tof_bottom;
@@ -33,10 +34,11 @@ VL53LX_DEV ToF_front  = &tof_front;
 VL53LX_DEV ToF_bottom = &tof_bottom;
 
 volatile uint8_t ToF_bottom_data_ready_flag;
-
+#if 1
 void IRAM_ATTR tof_int() {
     ToF_bottom_data_ready_flag = 1;
 }
+#endif
 
 int16_t tof_bottom_get_range() {
     return tof_range_get(ToF_bottom);
@@ -49,12 +51,17 @@ int16_t tof_front_get_range() {
 void tof_init(void) {
     uint8_t byteData;
     uint16_t wordData;
+    uint8_t new_address;
 
     ToF_bottom->comms_speed_khz   = 400;
     ToF_bottom->i2c_slave_address = 0x29;
+    ToF_bottom->xshut_pin = XSHUT_BOTTOM; // GPIO for bottom ToF XSHUT
+    ToF_bottom->int_pin = INT_BOTTOM;     // GPIO for bottom ToF interrupt
 
     ToF_front->comms_speed_khz   = 400;
     ToF_front->i2c_slave_address = 0x29;
+    ToF_front->xshut_pin = XSHUT_FRONT; // GPIO for front ToF XSHUT
+    ToF_front->int_pin = INT_FRONT;     // GPIO for front ToF interrupt
 
     // USBSerial.printf("#tof_i2c_init_status:%d\r\n",vl53lx_i2c_init());
 
@@ -68,15 +75,21 @@ void tof_init(void) {
     // ToF Disable
     digitalWrite(XSHUT_BOTTOM, LOW);
     digitalWrite(XSHUT_FRONT, LOW);
+    delay(50);
 
-    // Front ToF I2C address to 0x54
+    // Front ToF I2C address to 0x2A
+    new_address = 0x2A; // New I2C address for front ToF
+
+    //Front ToF Enable
     digitalWrite(XSHUT_FRONT, HIGH);
-    delay(100);
-    VL53LX_SetDeviceAddress(ToF_front, 0x54);
-    ToF_front->i2c_slave_address = 0x2A;
+    delay(50);
 
-    delay(100);
+    USBSerial.printf("Front ToF Address Change status %d\n\r",VL53LX_SetDeviceAddress( ToF_front, new_address<<1 ));
+    ToF_front->i2c_slave_address = new_address; // Set new I2C address for front ToF
+
+    // Bttom ToF Enable
     digitalWrite(XSHUT_BOTTOM, HIGH);
+    delay(50);
 
     // Bttom ToF setting
     USBSerial.printf("#1 WaitDeviceBooted Status:%d\n\r", VL53LX_WaitDeviceBooted(ToF_bottom));
@@ -94,7 +107,8 @@ void tof_init(void) {
     // Front ToF Setting
     USBSerial.printf("#2 WaitDeviceBooted Status:%d\n\r", VL53LX_WaitDeviceBooted(ToF_front));
     USBSerial.printf("#2 DataInit Status:%d\n\r", VL53LX_DataInit(ToF_front));
-    USBSerial.printf("#1 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_front, VL53LX_DISTANCEMODE_LONG));
+    //USBSerial.printf("#2 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_front, VL53LX_DISTANCEMODE_LONG));
+    USBSerial.printf("#2 Range setting  Status:%d\n\r", VL53LX_SetDistanceMode(ToF_front, VL53LX_DISTANCEMODE_MEDIUM));
     USBSerial.printf("#2 SetMeasurementTimingBuget Status:%d\n\r",
                      VL53LX_SetMeasurementTimingBudgetMicroSeconds(ToF_front, 33000));
     USBSerial.printf("#2 RdByte Status:%d\n\r", VL53LX_RdByte(ToF_front, 0x010F, &byteData));
@@ -110,6 +124,23 @@ void tof_init(void) {
     delay(100);
     USBSerial.printf("#Start Measurement Status:%d\n\r", VL53LX_StartMeasurement(ToF_bottom));
 }
+#if 0
+int16_t tof_range_get(VL53LX_DEV dev) {
+    int16_t range;
+    int16_t range_min;
+    int16_t range_max;
+    int16_t range_ave;
+    uint8_t count;
+
+    VL53LX_RangingMeasurementData_t data;
+
+    VL53LX_GetRangingData(dev, &data);
+    range = data.RangeMilliMeter;
+    VL53LX_ClearInterruptAndStartMeasurement(dev);
+    return range;
+}
+#endif
+
 
 int16_t tof_range_get(VL53LX_DEV dev) {
     int16_t range;

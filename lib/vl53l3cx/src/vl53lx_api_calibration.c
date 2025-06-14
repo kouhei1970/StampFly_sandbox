@@ -858,9 +858,17 @@ VL53LX_Error   VL53LX_run_hist_xtalk_extraction(
 	VL53LX_range_results_t     *prange_results =
 		(VL53LX_range_results_t *) pdev->wArea1;
 	uint8_t Very1stRange = 0;
+	VL53LX_DevicePresetModes current_device_preset_mode;
+	uint32_t inter_measurement_period_ms;
+	uint16_t dss_config__target_total_rate_mcps;
+	uint32_t phasecal_config_timeout_us;
+	uint32_t mm_config_timeout_us;
+	uint32_t range_config_timeout_us;
 
 	LOG_FUNCTION_START("");
 
+	current_device_preset_mode = pdev->preset_mode;
+	inter_measurement_period_ms = pdev->inter_measurement_period_ms;
 
 
 	if (status == VL53LX_ERROR_NONE)
@@ -966,6 +974,20 @@ VL53LX_Error   VL53LX_run_hist_xtalk_extraction(
 	VL53LX_set_tuning_parm(Dev, VL53LX_TUNINGPARM_HIST_MERGE_MAX_SIZE,
 			initMergeSize);
 	VL53LX_unload_patch(Dev);
+
+
+	VL53LX_get_preset_mode_timing_cfg(Dev, current_device_preset_mode,
+		&dss_config__target_total_rate_mcps,
+		&phasecal_config_timeout_us,
+		&mm_config_timeout_us,
+		&range_config_timeout_us);
+
+	VL53LX_set_preset_mode(Dev, current_device_preset_mode,
+		dss_config__target_total_rate_mcps,
+		phasecal_config_timeout_us,
+		mm_config_timeout_us,
+		range_config_timeout_us,
+		inter_measurement_period_ms);
 
 	if (status != VL53LX_ERROR_NONE)
 		status = VL53LX_ERROR_XTALK_EXTRACTION_SIGMA_LIMIT_FAIL;

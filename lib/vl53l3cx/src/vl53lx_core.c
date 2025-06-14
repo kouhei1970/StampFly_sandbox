@@ -3930,7 +3930,7 @@ VL53LX_Error VL53LX_dynamic_xtalk_correction_calc_new_xtalk(
 	uint8_t  histo_merge_nb;
 	uint8_t  i;
 	int32_t  itemp32;
-	uint32_t SmudgeFactor;
+	long int SmudgeFactor;
 	VL53LX_xtalk_config_t  *pX = &(pdev->xtalk_cfg);
 	VL53LX_xtalk_calibration_results_t  *pC = &(pdev->xtalk_cal);
 	uint32_t *pcpo;
@@ -4075,16 +4075,16 @@ VL53LX_Error VL53LX_dynamic_xtalk_correction_calc_new_xtalk(
 			(nXtalk != 0)) {
 			cXtalk =
 			pX->algo__crosstalk_compensation_plane_offset_kcps;
-			SmudgeFactor = cXtalk * 1000 / nXtalk;
+			SmudgeFactor = ((long int)(nXtalk) - (long int)(cXtalk))/512;
 			if ((max ==  0)||
-				(SmudgeFactor >= pconfig->max_smudge_factor))
+				(SmudgeFactor >= (long int)(pconfig->max_smudge_factor)))
 				pout->new_xtalk_applied_flag = 0;
 			else {
 				incXtalk = nXtalk / max;
 				cval = 0;
 				for (i = 0; i < max-1; i++) {
 					cval += incXtalk;
-					*pcpo = cval;
+					*pcpo = cval + cval/100;
 					pcpo++;
 				}
 				*pcpo = nXtalk;
@@ -4393,6 +4393,10 @@ VL53LX_Error VL53LX_dynamic_xtalk_correction_corrector(
 
 
 		xtalk_offset_out = (uint32_t)(pconfig->nodetect_xtalk_offset);
+
+		if (pdev->tuning_parms.tp_hist_merge == 1)
+			xtalk_offset_out = xtalk_offset_out *
+			(uint32_t)(pdev->tuning_parms.tp_hist_merge_max_size);
 
 		if (continue_processing == CONT_CONTINUE) {
 

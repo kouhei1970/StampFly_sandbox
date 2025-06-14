@@ -1,0 +1,29 @@
+{
+    "files.associations": {
+        "vl53lx_platform.h": "c",
+        "vl53lx_api.h": "c",
+        "i2c.h": "c",
+        "gpio.h": "c",
+        "task.h": "c",
+        "freertos.h": "c",
+        "esp_log.h": "c",
+        "*.tcc": "cpp",
+        "array": "cpp",
+        "string": "cpp",
+        "vector": "cpp",
+        "string_view": "cpp",
+        "functional": "cpp",
+        "limits": "cpp",
+        "ostream": "cpp",
+        "ratio": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp"
+    },
+    "C_Cpp.intelliSenseEngine": "default",
+    "C_Cpp.default.browse.path": [
+        "${workspaceFolder}",
+        "${workspaceFolder}/lib/**",
+        "~/.platformio/packages/framework-arduinoespressif32/**"
+    ],
+    "C_Cpp.errorSquiggles": "enabled"
+}

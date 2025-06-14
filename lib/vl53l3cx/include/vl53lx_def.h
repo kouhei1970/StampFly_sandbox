@@ -30,21 +30,15 @@ extern "C" {
  *  @{
  */
 
-typedef struct
-{
-	/* data */
-}I2C_HandleTypeDef;
-
 
 /** VL53LX IMPLEMENTATION major version */
 #define VL53LX_IMPLEMENTATION_VER_MAJOR       1
 /** VL53LX IMPLEMENTATION minor version */
 #define VL53LX_IMPLEMENTATION_VER_MINOR       2
 /** VL53LX IMPLEMENTATION sub version */
-#define VL53LX_IMPLEMENTATION_VER_SUB         8
+#define VL53LX_IMPLEMENTATION_VER_SUB         13
 /** VL53LX IMPLEMENTATION sub version */
-#define VL53LX_IMPLEMENTATION_VER_REVISION  2578
-
+#define VL53LX_IMPLEMENTATION_VER_REVISION  2676
 /****************************************
  * PRIVATE define do not edit
  ****************************************/
