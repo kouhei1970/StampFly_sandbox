@@ -68,12 +68,15 @@ typedef struct {
 } distance_t;
 
 // Sensor data
-// extern volatile float Ax,Ay,Az,Wp,Wq,Wr,Mx,My,Mz,Mx0,My0,Mz0,Mx_ave,My_ave,Mz_ave;
 extern volatile float Roll_angle, Pitch_angle, Yaw_angle;
 extern volatile float Roll_rate, Pitch_rate, Yaw_rate;
+extern volatile float Roll_rate_offset, Pitch_rate_offset, Yaw_rate_offset;
+extern volatile float Accel_z_offset;
 extern volatile float Accel_x_raw, Accel_y_raw, Accel_z_raw;
 extern volatile float Accel_x, Accel_y, Accel_z;
 extern volatile float Accel_z_d;
+extern volatile float Roll_rate_raw, Pitch_rate_raw, Yaw_rate_raw;
+extern volatile float Mx, My, Mz, Mx0, My0, Mz0, Mx_ave, My_ave, Mz_ave;
 extern volatile int16_t RawRange;
 extern volatile int16_t Range;
 extern volatile float Altitude;
@@ -93,6 +96,7 @@ extern volatile float Az_bias;
 extern Alt_kalman EstimatedAltitude;
 extern volatile int16_t RawRangeFront;
 extern volatile int16_t RangeFront;
+extern volatile uint16_t Offset_counter;
 
 void sensor_init(void);
 float sensor_read(void);
@@ -100,5 +104,7 @@ void sensor_reset_offset(void);
 void sensor_calc_offset_avarage(void);
 void ahrs_reset(void);
 uint8_t scan_i2c(void);
+void save_sensor_offsets(void);
+void load_sensor_offsets(void);
 
 #endif

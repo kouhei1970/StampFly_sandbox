@@ -30,6 +30,9 @@
 #include "spi_s3.hpp"
 #include "i2c.hpp"
 #include "wrapper.hpp"
+#include "mag.hpp"
+#include <nvs_flash.h>
+#include <nvs.h>
 
 Madgwick Drone_ahrs;
 Alt_kalman EstimatedAltitude;
@@ -174,6 +177,14 @@ void sensor_init()
     }
     delay(10);
 
+    // Magnetometer initialization
+    if (mag_sensor.init()) {
+        ESPSerial.printf("Magnetometer INIT Success!\n\r");
+    } else {
+        ESPSerial.printf("Magnetometer INIT failure!\n\r");
+        // 磁気センサーが初期化できなくても続行
+    }
+
     // Acceleration filter
     acc_filter.set_parameter(0.005, 0.0025);
 
@@ -291,6 +302,45 @@ float sensor_read(void)
         // USBSerial.printf("%6.3f %7.4f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f\n\r",
         //   Elapsed_time, Interval_time, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z);
 
+        // Get Magnetometer data
+        if (mag_sensor.update()) {
+            // 一時変数を使用してvolatile変数への参照問題を回避
+            float temp_mx, temp_my, temp_mz;
+            float cal_x, cal_y, cal_z;
+            
+            // 生の磁気データを取得
+            mag_sensor.getRawData(temp_mx, temp_my, temp_mz);
+            Mx = temp_mx;
+            My = temp_my;
+            Mz = temp_mz;
+            
+            // キャリブレーション済みデータを取得
+            mag_sensor.getCalibratedData(cal_x, cal_y, cal_z);
+            
+            // オフセット値を設定（キャリブレーション用）
+            Mx0 = cal_x - Mx;  // オフセット = キャリブレーション済み - 生データ
+            My0 = cal_y - My;
+            Mz0 = cal_z - Mz;
+            
+            // 平均値（移動平均フィルタ）
+            static float mx_sum = 0.0f, my_sum = 0.0f, mz_sum = 0.0f;
+            static int mag_count = 0;
+            const int MAG_AVE_SIZE = 10;
+            
+            mx_sum += cal_x;
+            my_sum += cal_y;
+            mz_sum += cal_z;
+            mag_count++;
+            
+            if (mag_count >= MAG_AVE_SIZE) {
+                Mx_ave = mx_sum / MAG_AVE_SIZE;
+                My_ave = my_sum / MAG_AVE_SIZE;
+                Mz_ave = mz_sum / MAG_AVE_SIZE;
+                mx_sum = my_sum = mz_sum = 0.0f;
+                mag_count = 0;
+            }
+        }
+
         // Get Altitude (30Hz)
         Az = az_filter.update(-Accel_z_d, sens_interval);
 
@@ -397,4 +447,111 @@ float sensor_read(void)
     uint32_t et = micros();
     // USBSerial.printf("Sensor read %f %f %f\n\r", (mt-st)*1.0e-6, (et-mt)*1e-6, (et-st)*1.0e-6);
     return (et - st) * 1.0e-6;
+}
+
+void save_sensor_offsets(void)
+{
+    ESP_LOGI("SENSOR", "Saving sensor offsets to NVS...");
+    
+    nvs_handle_t nvs_handle;
+    esp_err_t err;
+    
+    // NVSを初期化
+    err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
+    
+    // NVSを開く
+    err = nvs_open("sensor_offset", NVS_READWRITE, &nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE("SENSOR", "Error opening NVS handle: %s", esp_err_to_name(err));
+        return;
+    }
+    
+    // オフセット値を保存（volatile変数のコピーを作成）
+    float temp_roll_rate_offset = Roll_rate_offset;
+    float temp_pitch_rate_offset = Pitch_rate_offset;
+    float temp_yaw_rate_offset = Yaw_rate_offset;
+    float temp_accel_z_offset = Accel_z_offset;
+    uint16_t temp_offset_counter = Offset_counter;
+    
+    err = nvs_set_blob(nvs_handle, "roll_rate_offset", &temp_roll_rate_offset, sizeof(float));
+    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving roll_rate_offset: %s", esp_err_to_name(err));
+    
+    err = nvs_set_blob(nvs_handle, "pitch_rate_offset", &temp_pitch_rate_offset, sizeof(float));
+    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving pitch_rate_offset: %s", esp_err_to_name(err));
+    
+    err = nvs_set_blob(nvs_handle, "yaw_rate_offset", &temp_yaw_rate_offset, sizeof(float));
+    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving yaw_rate_offset: %s", esp_err_to_name(err));
+    
+    err = nvs_set_blob(nvs_handle, "accel_z_offset", &temp_accel_z_offset, sizeof(float));
+    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving accel_z_offset: %s", esp_err_to_name(err));
+    
+    err = nvs_set_blob(nvs_handle, "offset_counter", &temp_offset_counter, sizeof(uint16_t));
+    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving offset_counter: %s", esp_err_to_name(err));
+    
+    // 変更をコミット
+    err = nvs_commit(nvs_handle);
+    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error committing NVS: %s", esp_err_to_name(err));
+    
+    // NVSを閉じる
+    nvs_close(nvs_handle);
+    
+    ESP_LOGI("SENSOR", "Sensor offsets saved successfully");
+}
+
+void load_sensor_offsets(void)
+{
+    ESP_LOGI("SENSOR", "Loading sensor offsets from NVS...");
+    
+    nvs_handle_t nvs_handle;
+    esp_err_t err;
+    
+    // NVSを初期化
+    err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
+    
+    // NVSを開く
+    err = nvs_open("sensor_offset", NVS_READONLY, &nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGW("SENSOR", "Error opening NVS handle: %s", esp_err_to_name(err));
+        ESP_LOGW("SENSOR", "Using default offset values");
+        return;
+    }
+    
+    // オフセット値を読み込み
+    size_t size = sizeof(float);
+    
+    err = nvs_get_blob(nvs_handle, "roll_rate_offset", (void*)&Roll_rate_offset, &size);
+    if (err != ESP_OK) ESP_LOGW("SENSOR", "Error loading roll_rate_offset: %s", esp_err_to_name(err));
+    
+    err = nvs_get_blob(nvs_handle, "pitch_rate_offset", (void*)&Pitch_rate_offset, &size);
+    if (err != ESP_OK) ESP_LOGW("SENSOR", "Error loading pitch_rate_offset: %s", esp_err_to_name(err));
+    
+    err = nvs_get_blob(nvs_handle, "yaw_rate_offset", (void*)&Yaw_rate_offset, &size);
+    if (err != ESP_OK) ESP_LOGW("SENSOR", "Error loading yaw_rate_offset: %s", esp_err_to_name(err));
+    
+    err = nvs_get_blob(nvs_handle, "accel_z_offset", (void*)&Accel_z_offset, &size);
+    if (err != ESP_OK) ESP_LOGW("SENSOR", "Error loading accel_z_offset: %s", esp_err_to_name(err));
+    
+    size = sizeof(uint16_t);
+    err = nvs_get_blob(nvs_handle, "offset_counter", (void*)&Offset_counter, &size);
+    if (err != ESP_OK) ESP_LOGW("SENSOR", "Error loading offset_counter: %s", esp_err_to_name(err));
+    
+    // NVSを閉じる
+    nvs_close(nvs_handle);
+    
+    ESP_LOGI("SENSOR", "Loaded sensor offsets:");
+    ESP_LOGI("SENSOR", "Roll rate offset: %.6f", Roll_rate_offset);
+    ESP_LOGI("SENSOR", "Pitch rate offset: %.6f", Pitch_rate_offset);
+    ESP_LOGI("SENSOR", "Yaw rate offset: %.6f", Yaw_rate_offset);
+    ESP_LOGI("SENSOR", "Accel Z offset: %.6f", Accel_z_offset);
+    ESP_LOGI("SENSOR", "Offset counter: %d", Offset_counter);
 }

@@ -46,6 +46,8 @@
 #include "button.hpp"
 #include "buzzer.h"
 #include "wrapper.hpp"
+#include "cli.hpp"
+#include <Preferences.h>
 
 // モータPWM出力Pinのアサイン
 // Motor PWM Pin
@@ -75,37 +77,37 @@ float Control_period = 0.0025f; // 400Hz
 
 // PID Gain
 // Rate control PID gain
-const float Roll_rate_kp = 0.65f;
-const float Roll_rate_ti = 0.7f;
-const float Roll_rate_td = 0.01;
-const float Roll_rate_eta = 0.125f;
+float Roll_rate_kp = 0.65f;
+float Roll_rate_ti = 0.7f;
+float Roll_rate_td = 0.01;
+float Roll_rate_eta = 0.125f;
 
-const float Pitch_rate_kp = 0.95f;
-const float Pitch_rate_ti = 0.7f;
-const float Pitch_rate_td = 0.025f;
-const float Pitch_rate_eta = 0.125f;
+float Pitch_rate_kp = 0.95f;
+float Pitch_rate_ti = 0.7f;
+float Pitch_rate_td = 0.025f;
+float Pitch_rate_eta = 0.125f;
 
-const float Yaw_rate_kp = 3.0f;
-const float Yaw_rate_ti = 0.8f;
-const float Yaw_rate_td = 0.01f;
-const float Yaw_rate_eta = 0.125f;
+float Yaw_rate_kp = 3.0f;
+float Yaw_rate_ti = 0.8f;
+float Yaw_rate_td = 0.01f;
+float Yaw_rate_eta = 0.125f;
 
 // Angle control PID gain
-const float Rall_angle_kp = 5.0f; // 8.0
-const float Rall_angle_ti = 4.0f;
-const float Rall_angle_td = 0.04f;
-const float Rall_angle_eta = 0.125f;
+float Rall_angle_kp = 5.0f; // 8.0
+float Rall_angle_ti = 4.0f;
+float Rall_angle_td = 0.04f;
+float Rall_angle_eta = 0.125f;
 
-const float Pitch_angle_kp = 5.0f; // 8.0
-const float Pitch_angle_ti = 4.0f;
-const float Pitch_angle_td = 0.04f;
-const float Pitch_angle_eta = 0.125f;
+float Pitch_angle_kp = 5.0f; // 8.0
+float Pitch_angle_ti = 4.0f;
+float Pitch_angle_td = 0.04f;
+float Pitch_angle_eta = 0.125f;
 
 // Altitude control PID gain
-const float alt_kp = 0.38f; // 5.0//soso 0.5
-const float alt_ti = 10.0f; // 200.0//soso 10.0
-const float alt_td = 0.5f;  // 0.5//soso 0.5
-const float alt_eta = 0.125f;
+float alt_kp = 0.38f; // 5.0//soso 0.5
+float alt_ti = 10.0f; // 200.0//soso 10.0
+float alt_td = 0.5f;  // 0.5//soso 0.5
+float alt_eta = 0.125f;
 const float alt_period = 0.0333;
 
 const float z_dot_kp = 0.08f; // 0.35//soso 0.1
@@ -276,10 +278,15 @@ void init_copter(void)
 
     setup_pwm_buzzer();
 
+
     ESPSerial.printf("Finish StampFly init!\r\n");
     ESPSerial.printf("Enjoy Flight!\r\n");
 
-    // start_tone();
+    //Start Tone
+    start_tone();
+    
+    // Initialize CLI
+    cli_init();
 }
 
 // Main loop
@@ -288,8 +295,7 @@ void loop_400Hz(void)
     // static uint8_t led = 1;
     float sense_time;
     // 割り込みにより400Hzで以降のコードが実行
-    while (Loop_flag == 0)
-        ;
+    while (Loop_flag == 0);
     Loop_flag = 0;
 
     E_time = micros();
@@ -424,6 +430,11 @@ void loop_400Hz(void)
     //// Telemetry
     // telemetry_fast();
     telemetry();
+
+    // CLI処理 (PARKING_MODEでのみ実行)
+    if (Mode == PARKING_MODE) {
+        cli_process();
+    }
 
     uint32_t ce_time = micros();
     // Dt_time          = ce_time - cs_time;
@@ -609,6 +620,9 @@ uint8_t judge_mode_change(void)
 
 void control_init(void)
 {
+    // 保存されたPIDゲインを読み込み
+    load_pid_gains();
+    
     // Rate control
     p_pid.set_parameter(Roll_rate_kp, Roll_rate_ti, Roll_rate_td, Roll_rate_eta,
                         Control_period); // Roll rate control gain
@@ -1140,4 +1154,169 @@ void motor_stop(void)
     set_duty_fl(0.0);
     set_duty_rr(0.0);
     set_duty_rl(0.0);
+}
+
+// PIDゲイン保存・読み込み機能
+Preferences preferences;
+
+// デフォルトPIDゲイン値（起動時の値）
+const float DEFAULT_Roll_rate_kp = 0.65f;
+const float DEFAULT_Roll_rate_ti = 0.7f;
+const float DEFAULT_Roll_rate_td = 0.01f;
+const float DEFAULT_Roll_rate_eta = 0.125f;
+
+const float DEFAULT_Pitch_rate_kp = 0.95f;
+const float DEFAULT_Pitch_rate_ti = 0.7f;
+const float DEFAULT_Pitch_rate_td = 0.025f;
+const float DEFAULT_Pitch_rate_eta = 0.125f;
+
+const float DEFAULT_Yaw_rate_kp = 3.0f;
+const float DEFAULT_Yaw_rate_ti = 0.8f;
+const float DEFAULT_Yaw_rate_td = 0.01f;
+const float DEFAULT_Yaw_rate_eta = 0.125f;
+
+const float DEFAULT_Rall_angle_kp = 5.0f;
+const float DEFAULT_Rall_angle_ti = 4.0f;
+const float DEFAULT_Rall_angle_td = 0.04f;
+const float DEFAULT_Rall_angle_eta = 0.125f;
+
+const float DEFAULT_Pitch_angle_kp = 5.0f;
+const float DEFAULT_Pitch_angle_ti = 4.0f;
+const float DEFAULT_Pitch_angle_td = 0.04f;
+const float DEFAULT_Pitch_angle_eta = 0.125f;
+
+const float DEFAULT_alt_kp = 0.38f;
+const float DEFAULT_alt_ti = 10.0f;
+const float DEFAULT_alt_td = 0.5f;
+const float DEFAULT_alt_eta = 0.125f;
+
+void save_pid_gains(void)
+{
+    preferences.begin("stampfly", false);
+    
+    // Rate control gains
+    preferences.putFloat("roll_rate_kp", Roll_rate_kp);
+    preferences.putFloat("roll_rate_ti", Roll_rate_ti);
+    preferences.putFloat("roll_rate_td", Roll_rate_td);
+    preferences.putFloat("roll_rate_eta", Roll_rate_eta);
+    
+    preferences.putFloat("pitch_rate_kp", Pitch_rate_kp);
+    preferences.putFloat("pitch_rate_ti", Pitch_rate_ti);
+    preferences.putFloat("pitch_rate_td", Pitch_rate_td);
+    preferences.putFloat("pitch_rate_eta", Pitch_rate_eta);
+    
+    preferences.putFloat("yaw_rate_kp", Yaw_rate_kp);
+    preferences.putFloat("yaw_rate_ti", Yaw_rate_ti);
+    preferences.putFloat("yaw_rate_td", Yaw_rate_td);
+    preferences.putFloat("yaw_rate_eta", Yaw_rate_eta);
+    
+    // Angle control gains
+    preferences.putFloat("roll_angle_kp", Rall_angle_kp);
+    preferences.putFloat("roll_angle_ti", Rall_angle_ti);
+    preferences.putFloat("roll_angle_td", Rall_angle_td);
+    preferences.putFloat("roll_angle_eta", Rall_angle_eta);
+    
+    preferences.putFloat("pitch_angle_kp", Pitch_angle_kp);
+    preferences.putFloat("pitch_angle_ti", Pitch_angle_ti);
+    preferences.putFloat("pitch_angle_td", Pitch_angle_td);
+    preferences.putFloat("pitch_angle_eta", Pitch_angle_eta);
+    
+    // Altitude control gains
+    preferences.putFloat("alt_kp", alt_kp);
+    preferences.putFloat("alt_ti", alt_ti);
+    preferences.putFloat("alt_td", alt_td);
+    preferences.putFloat("alt_eta", alt_eta);
+    
+    preferences.end();
+}
+
+void load_pid_gains(void)
+{
+    preferences.begin("stampfly", true);
+    
+    // Rate control gains
+    Roll_rate_kp = preferences.getFloat("roll_rate_kp", DEFAULT_Roll_rate_kp);
+    Roll_rate_ti = preferences.getFloat("roll_rate_ti", DEFAULT_Roll_rate_ti);
+    Roll_rate_td = preferences.getFloat("roll_rate_td", DEFAULT_Roll_rate_td);
+    Roll_rate_eta = preferences.getFloat("roll_rate_eta", DEFAULT_Roll_rate_eta);
+    
+    Pitch_rate_kp = preferences.getFloat("pitch_rate_kp", DEFAULT_Pitch_rate_kp);
+    Pitch_rate_ti = preferences.getFloat("pitch_rate_ti", DEFAULT_Pitch_rate_ti);
+    Pitch_rate_td = preferences.getFloat("pitch_rate_td", DEFAULT_Pitch_rate_td);
+    Pitch_rate_eta = preferences.getFloat("pitch_rate_eta", DEFAULT_Pitch_rate_eta);
+    
+    Yaw_rate_kp = preferences.getFloat("yaw_rate_kp", DEFAULT_Yaw_rate_kp);
+    Yaw_rate_ti = preferences.getFloat("yaw_rate_ti", DEFAULT_Yaw_rate_ti);
+    Yaw_rate_td = preferences.getFloat("yaw_rate_td", DEFAULT_Yaw_rate_td);
+    Yaw_rate_eta = preferences.getFloat("yaw_rate_eta", DEFAULT_Yaw_rate_eta);
+    
+    // Angle control gains
+    Rall_angle_kp = preferences.getFloat("roll_angle_kp", DEFAULT_Rall_angle_kp);
+    Rall_angle_ti = preferences.getFloat("roll_angle_ti", DEFAULT_Rall_angle_ti);
+    Rall_angle_td = preferences.getFloat("roll_angle_td", DEFAULT_Rall_angle_td);
+    Rall_angle_eta = preferences.getFloat("roll_angle_eta", DEFAULT_Rall_angle_eta);
+    
+    Pitch_angle_kp = preferences.getFloat("pitch_angle_kp", DEFAULT_Pitch_angle_kp);
+    Pitch_angle_ti = preferences.getFloat("pitch_angle_ti", DEFAULT_Pitch_angle_ti);
+    Pitch_angle_td = preferences.getFloat("pitch_angle_td", DEFAULT_Pitch_angle_td);
+    Pitch_angle_eta = preferences.getFloat("pitch_angle_eta", DEFAULT_Pitch_angle_eta);
+    
+    // Altitude control gains
+    alt_kp = preferences.getFloat("alt_kp", DEFAULT_alt_kp);
+    alt_ti = preferences.getFloat("alt_ti", DEFAULT_alt_ti);
+    alt_td = preferences.getFloat("alt_td", DEFAULT_alt_td);
+    alt_eta = preferences.getFloat("alt_eta", DEFAULT_alt_eta);
+    
+    preferences.end();
+}
+
+void reset_pid_gains_to_default(void)
+{
+    // Rate control gains
+    Roll_rate_kp = DEFAULT_Roll_rate_kp;
+    Roll_rate_ti = DEFAULT_Roll_rate_ti;
+    Roll_rate_td = DEFAULT_Roll_rate_td;
+    Roll_rate_eta = DEFAULT_Roll_rate_eta;
+    
+    Pitch_rate_kp = DEFAULT_Pitch_rate_kp;
+    Pitch_rate_ti = DEFAULT_Pitch_rate_ti;
+    Pitch_rate_td = DEFAULT_Pitch_rate_td;
+    Pitch_rate_eta = DEFAULT_Pitch_rate_eta;
+    
+    Yaw_rate_kp = DEFAULT_Yaw_rate_kp;
+    Yaw_rate_ti = DEFAULT_Yaw_rate_ti;
+    Yaw_rate_td = DEFAULT_Yaw_rate_td;
+    Yaw_rate_eta = DEFAULT_Yaw_rate_eta;
+    
+    // Angle control gains
+    Rall_angle_kp = DEFAULT_Rall_angle_kp;
+    Rall_angle_ti = DEFAULT_Rall_angle_ti;
+    Rall_angle_td = DEFAULT_Rall_angle_td;
+    Rall_angle_eta = DEFAULT_Rall_angle_eta;
+    
+    Pitch_angle_kp = DEFAULT_Pitch_angle_kp;
+    Pitch_angle_ti = DEFAULT_Pitch_angle_ti;
+    Pitch_angle_td = DEFAULT_Pitch_angle_td;
+    Pitch_angle_eta = DEFAULT_Pitch_angle_eta;
+    
+    // Altitude control gains
+    alt_kp = DEFAULT_alt_kp;
+    alt_ti = DEFAULT_alt_ti;
+    alt_td = DEFAULT_alt_td;
+    alt_eta = DEFAULT_alt_eta;
+}
+
+void update_pid_controllers(void)
+{
+    // Rate control
+    p_pid.set_parameter(Roll_rate_kp, Roll_rate_ti, Roll_rate_td, Roll_rate_eta, Control_period);
+    q_pid.set_parameter(Pitch_rate_kp, Pitch_rate_ti, Pitch_rate_td, Pitch_rate_eta, Control_period);
+    r_pid.set_parameter(Yaw_rate_kp, Yaw_rate_ti, Yaw_rate_td, Yaw_rate_eta, Control_period);
+    
+    // Angle control
+    phi_pid.set_parameter(Rall_angle_kp, Rall_angle_ti, Rall_angle_td, Rall_angle_eta, Control_period);
+    theta_pid.set_parameter(Pitch_angle_kp, Pitch_angle_ti, Pitch_angle_td, Pitch_angle_eta, Control_period);
+    
+    // Altitude control
+    alt_pid.set_parameter(alt_kp, alt_ti, alt_td, alt_eta, alt_period);
 }

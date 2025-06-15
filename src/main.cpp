@@ -10,6 +10,7 @@ void setup() {
   esp_log_level_set("*", ESP_LOG_VERBOSE);
   
   init_copter();
+  
   delay(100);
 }
 

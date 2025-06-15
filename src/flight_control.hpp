@@ -71,6 +71,12 @@ void set_duty_fl(float duty);
 void set_duty_rr(float duty);
 void set_duty_rl(float duty);
 
+// PIDゲイン保存・読み込み関数
+void save_pid_gains(void);
+void load_pid_gains(void);
+void reset_pid_gains_to_default(void);
+void update_pid_controllers(void);
+
 // グローバル変数
 extern volatile uint8_t Mode;
 extern volatile uint8_t Loop_flag;
@@ -79,37 +85,37 @@ extern volatile float Elapsed_time;
 
 // PID Gain
 // Rate control PID gain
-extern const float Roll_rate_kp;
-extern const float Roll_rate_ti;
-extern const float Roll_rate_td;
-extern const float Roll_rate_eta;
+extern float Roll_rate_kp;
+extern float Roll_rate_ti;
+extern float Roll_rate_td;
+extern float Roll_rate_eta;
 
-extern const float Pitch_rate_kp;
-extern const float Pitch_rate_ti;
-extern const float Pitch_rate_td;
-extern const float Pitch_rate_eta;
+extern float Pitch_rate_kp;
+extern float Pitch_rate_ti;
+extern float Pitch_rate_td;
+extern float Pitch_rate_eta;
 
-extern const float Yaw_rate_kp;
-extern const float Yaw_rate_ti;
-extern const float Yaw_rate_td;
-extern const float Yaw_rate_eta;
+extern float Yaw_rate_kp;
+extern float Yaw_rate_ti;
+extern float Yaw_rate_td;
+extern float Yaw_rate_eta;
 
 // Angle control PID gain
-extern const float Rall_angle_kp;
-extern const float Rall_angle_ti;
-extern const float Rall_angle_td;
-extern const float Rall_angle_eta;
+extern float Rall_angle_kp;
+extern float Rall_angle_ti;
+extern float Rall_angle_td;
+extern float Rall_angle_eta;
 
-extern const float Pitch_angle_kp;
-extern const float Pitch_angle_ti;
-extern const float Pitch_angle_td;
-extern const float Pitch_angle_eta;
+extern float Pitch_angle_kp;
+extern float Pitch_angle_ti;
+extern float Pitch_angle_td;
+extern float Pitch_angle_eta;
 
 // Altitude control PID gain
-extern const float alt_kp;
-extern const float alt_ti;
-extern const float alt_td;
-extern const float alt_eta;
+extern float alt_kp;
+extern float alt_ti;
+extern float alt_td;
+extern float alt_eta;
 extern const float alt_period;
 
 extern volatile float Interval_time;
@@ -154,4 +160,16 @@ extern uint8_t Throttle_control_mode;
 
 extern uint8_t ahrs_reset_flag;
 extern uint8_t last_ahrs_reset_flag;
+
+// PIDオブジェクトのextern宣言
+class PID;
+extern PID p_pid;
+extern PID q_pid;
+extern PID r_pid;
+extern PID phi_pid;
+extern PID theta_pid;
+extern PID psi_pid;
+extern PID alt_pid;
+extern PID z_dot_pid;
+
 #endif
