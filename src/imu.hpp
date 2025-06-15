@@ -8,7 +8,6 @@
 
 #define DPS20002RAD 34.90658504
 #define DPS10002RAD 17.4532925199
-#define BMI270_CHIP_ID 0x24
 
 void imu_init(void);
 void imu_test(void);
