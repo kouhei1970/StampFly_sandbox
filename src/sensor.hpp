@@ -98,10 +98,22 @@ extern volatile int16_t RawRangeFront;
 extern volatile int16_t RangeFront;
 extern volatile uint16_t Offset_counter;
 
+// オプティカルフロー関連変数
+extern int16_t deltaX, deltaY;
+extern volatile float Optical_flow_x, Optical_flow_y;
+extern volatile float Velocity_x, Velocity_y;
+
+// オフセット計算制御用フラグ
+extern volatile uint8_t Offset_calc_flag;
+extern volatile uint16_t Offset_calc_counter;
+extern volatile uint16_t Offset_calc_target;
+
 void sensor_init(void);
 float sensor_read(void);
 void sensor_reset_offset(void);
 void sensor_calc_offset_avarage(void);
+void sensor_start_offset_calc(uint16_t target_count);
+uint8_t sensor_is_offset_calc_running(void);
 void ahrs_reset(void);
 uint8_t scan_i2c(void);
 void save_sensor_offsets(void);

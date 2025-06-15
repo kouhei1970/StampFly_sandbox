@@ -28,6 +28,7 @@
 #include "imu.hpp"
 #include "tof.hpp"
 #include "mag.hpp"
+#include "opt.hpp"
 #include "flight_control.hpp"
 #include "pid.hpp"
 #include <string.h>
@@ -49,6 +50,36 @@ typedef enum {
 
 static stream_format_t stream_format = STREAM_FORMAT_DEFAULT;
 
+// オプティカルテスト用の状態管理
+typedef struct {
+    bool active;
+    uint32_t start_time;
+    uint32_t duration_ms;
+    uint32_t last_print_time;
+    uint32_t last_sample_time;
+    int total_reads;
+    int valid_reads;
+    int failed_reads;
+    int quality_failed;
+    float total_movement_x;
+    float total_movement_y;
+    float max_velocity_x;
+    float max_velocity_y;
+} optical_test_t;
+
+static optical_test_t optical_test = {false, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f, 0.0f, 0.0f, 0.0f};
+
+// オフセット計算用の状態管理
+typedef struct {
+    bool active;
+    uint32_t start_time;
+    uint32_t last_print_time;
+    int target_samples;
+    int current_samples;
+} offset_calc_t;
+
+static offset_calc_t offset_calc = {false, 0, 0, 0, 0};
+
 // コマンド履歴機能
 static char command_history[CLI_HISTORY_SIZE][CLI_BUFFER_SIZE];
 static int history_count = 0;
@@ -68,6 +99,7 @@ static const cli_command_t cli_commands[] = {
     {"tof", cmd_tof, "ToFセンサーデータを表示 (距離)"},
     {"voltage", cmd_voltage, "バッテリー電圧を表示"},
     {"mag", cmd_mag, "磁気センサーデータを表示"},
+    {"optical", cmd_optical, "オプティカルフローデータを表示/テスト [duration_sec]"},
     {"attitude", cmd_attitude, "姿勢角を表示 (Roll/Pitch/Yaw)"},
     {"all", cmd_all_sensors, "全センサーデータを表示"},
     {"status", cmd_status, "システム状態を表示"},
@@ -286,6 +318,141 @@ void output_stream_data()
 
 void cli_process(void)
 {
+    // オプティカルテストの処理
+    if (optical_test.active) {
+        uint32_t current_time = millis();
+        
+        // テスト終了チェック
+        if (current_time >= optical_test.start_time + optical_test.duration_ms) {
+            // テスト完了
+            optical_test.active = false;
+            
+            uint32_t actual_duration = current_time - optical_test.start_time;
+            float total_distance = sqrt(optical_test.total_movement_x * optical_test.total_movement_x + 
+                                      optical_test.total_movement_y * optical_test.total_movement_y);
+            
+            ESPSerial.println("\n=== テスト結果 ===");
+            ESPSerial.printf("実行時間: %d ms\n", actual_duration);
+            ESPSerial.printf("総読み取り: %d回 (%.1f Hz)\n", optical_test.total_reads, 
+                           optical_test.total_reads * 1000.0f / actual_duration);
+            ESPSerial.printf("有効データ: %d回 (%.1f Hz)\n", optical_test.valid_reads, 
+                           optical_test.valid_reads * 1000.0f / actual_duration);
+            ESPSerial.printf("失敗データ: %d回 (%.1f%%)\n", optical_test.failed_reads, 
+                           optical_test.failed_reads * 100.0f / optical_test.total_reads);
+            ESPSerial.printf("品質不良: %d回 (%.1f%%)\n", optical_test.quality_failed, 
+                           optical_test.quality_failed * 100.0f / optical_test.total_reads);
+            ESPSerial.printf("総移動量: X=%.6f m, Y=%.6f m\n", optical_test.total_movement_x, optical_test.total_movement_y);
+            ESPSerial.printf("総移動距離: %.6f m\n", total_distance);
+            ESPSerial.printf("平均速度: X=%.3f m/s, Y=%.3f m/s\n", 
+                           optical_test.total_movement_x / (actual_duration / 1000.0f), 
+                           optical_test.total_movement_y / (actual_duration / 1000.0f));
+            ESPSerial.printf("最大速度: X=%.3f m/s, Y=%.3f m/s\n", optical_test.max_velocity_x, optical_test.max_velocity_y);
+            ESPSerial.printf("使用CPI: %.1f\n", calculateCPI(Altitude2));
+            ESPSerial.print("StampFly> ");
+            return;
+        }
+        
+        // サンプリング処理（10ms間隔）
+        if (current_time - optical_test.last_sample_time >= 10) {
+            optical_test.last_sample_time = current_time;
+            
+            int16_t dx, dy;
+            uint8_t motion_status = readMotionCount(&dx, &dy);
+            optical_test.total_reads++;
+            
+            if (motion_status == 1) {
+                // 有効なデータ
+                optical_test.valid_reads++;
+                
+                // PMW3901データシート準拠の移動量計算（高さベースCPI使用）
+                float movement_x, movement_y;
+                calculateMovementFromDelta(-dy, dx, &movement_x, &movement_y, Altitude2); // 軸変換、高度使用
+                
+                optical_test.total_movement_x += movement_x;
+                optical_test.total_movement_y += movement_y;
+                
+                // 速度計算（10ms間隔）
+                float velocity_x = movement_x / 0.01f;
+                float velocity_y = movement_y / 0.01f;
+                
+                if (abs(velocity_x) > abs(optical_test.max_velocity_x)) optical_test.max_velocity_x = velocity_x;
+                if (abs(velocity_y) > abs(optical_test.max_velocity_y)) optical_test.max_velocity_y = velocity_y;
+                
+            } else if (motion_status == 2) {
+                // 品質不良
+                optical_test.quality_failed++;
+            } else {
+                // データなし
+                optical_test.failed_reads++;
+            }
+        }
+        
+        // 1秒ごとに進行状況を表示
+        if (current_time - optical_test.last_print_time >= 1000) {
+            optical_test.last_print_time = current_time;
+            uint32_t elapsed = (current_time - optical_test.start_time) / 1000;
+            uint32_t total_duration = optical_test.duration_ms / 1000;
+            ESPSerial.printf("進行: %d/%d秒 (読取: %d, 有効: %d)\n", 
+                           elapsed, total_duration, optical_test.total_reads, optical_test.valid_reads);
+        }
+        
+        // エンター入力でテスト停止
+        if (ESPSerial.available()) {
+            char c = ESPSerial.read();
+            if (c == '\n' || c == '\r') {
+                optical_test.active = false;
+                ESPSerial.println("\nオプティカルテスト停止");
+                ESPSerial.print("StampFly> ");
+                return;
+            }
+        }
+    }
+    
+    // オフセット計算の処理
+    if (offset_calc.active) {
+        uint32_t current_time = millis();
+        
+        // 5ms間隔でサンプリング
+        if (current_time - offset_calc.start_time >= offset_calc.current_samples * 5) {
+            sensor_calc_offset_avarage();
+            offset_calc.current_samples++;
+            
+            // 100サンプルごとに進行状況を表示
+            if (offset_calc.current_samples % 100 == 0) {
+                ESPSerial.printf("進行状況: %d/%d\n", offset_calc.current_samples, offset_calc.target_samples);
+            }
+            
+            // 目標サンプル数に達したら完了
+            if (offset_calc.current_samples >= offset_calc.target_samples) {
+                offset_calc.active = false;
+                
+                ESPSerial.println("オフセット計算完了");
+                
+                // オフセット結果を表示
+                ESPSerial.println("=== センサーオフセット値 ===");
+                ESPSerial.printf("ジャイロオフセット [rad/s]:\n");
+                ESPSerial.printf("  Roll:  %.6f\n", Roll_rate_offset);
+                ESPSerial.printf("  Pitch: %.6f\n", Pitch_rate_offset);
+                ESPSerial.printf("  Yaw:   %.6f\n", Yaw_rate_offset);
+                ESPSerial.printf("加速度Zオフセット [G]: %.6f\n", Accel_z_offset);
+                ESPSerial.printf("オフセット計算回数: %d\n", Offset_counter);
+                ESPSerial.print("StampFly> ");
+                return;
+            }
+        }
+        
+        // エンター入力でオフセット計算停止
+        if (ESPSerial.available()) {
+            char c = ESPSerial.read();
+            if (c == '\n' || c == '\r') {
+                offset_calc.active = false;
+                ESPSerial.println("\nオフセット計算停止");
+                ESPSerial.print("StampFly> ");
+                return;
+            }
+        }
+    }
+    
     // ストリーミングモードの処理
     if (streaming_enabled) {
         uint32_t current_time = millis();
@@ -606,10 +773,12 @@ void cmd_stream(int argc, char* argv[])
 void cmd_offset(int argc, char* argv[])
 {
     if (argc < 2) {
-        ESPSerial.println("使用法: offset [get/reset/start]");
+        ESPSerial.println("使用法: offset [get/reset/start/stop] [samples]");
         ESPSerial.println("  get   - 現在のオフセット値を表示");
         ESPSerial.println("  reset - オフセット値をリセット");
-        ESPSerial.println("  start - オフセット計算を開始");
+        ESPSerial.println("  start [samples] - ノンブロッキングオフセット計算を開始");
+        ESPSerial.println("                    samples: 100-5000 (デフォルト: 800)");
+        ESPSerial.println("  stop  - 実行中のオフセット計算を停止");
         return;
     }
     
@@ -625,28 +794,40 @@ void cmd_offset(int argc, char* argv[])
         sensor_reset_offset();
         ESPSerial.println("センサーオフセットをリセットしました");
     } else if (strcmp(argv[1], "start") == 0) {
-        sensor_reset_offset();
-        ESPSerial.println("オフセット計算を開始します");
-        ESPSerial.println("機体を水平に静置してください...");
-        
-        // 800回のサンプリングでオフセット計算
-        for (int i = 0; i < 800; i++) {
-            sensor_calc_offset_avarage();
-            if (i % 100 == 0) {
-                ESPSerial.printf("進行状況: %d/800\n", i);
-            }
-            delay(5);
+        if (offset_calc.active) {
+            ESPSerial.println("オフセット計算は既に実行中です");
+            ESPSerial.println("エンターキーで停止してから新しい計算を開始してください");
+            return;
         }
-        ESPSerial.println("オフセット計算完了");
         
-        // オフセット結果を表示
-        ESPSerial.println("=== センサーオフセット値 ===");
-        ESPSerial.printf("ジャイロオフセット [rad/s]:\n");
-        ESPSerial.printf("  Roll:  %.6f\n", Roll_rate_offset);
-        ESPSerial.printf("  Pitch: %.6f\n", Pitch_rate_offset);
-        ESPSerial.printf("  Yaw:   %.6f\n", Yaw_rate_offset);
-        ESPSerial.printf("加速度Zオフセット [G]: %.6f\n", Accel_z_offset);
-        ESPSerial.printf("オフセット計算回数: %d\n", Offset_counter);
+        // サンプル数の指定（デフォルト800）
+        int samples = 800;
+        if (argc >= 3) {
+            samples = atoi(argv[2]);
+            if (samples < 100 || samples > 5000) {
+                ESPSerial.println("サンプル数は100-5000の範囲で指定してください");
+                return;
+            }
+        }
+        
+        sensor_reset_offset();
+        
+        // ノンブロッキングオフセット計算を開始
+        offset_calc.active = true;
+        offset_calc.start_time = millis();
+        offset_calc.target_samples = samples;
+        offset_calc.current_samples = 0;
+        
+        ESPSerial.printf("ノンブロッキングオフセット計算を開始します (%dサンプル)\n", samples);
+        ESPSerial.println("機体を水平に静置してください...");
+        ESPSerial.println("停止するにはエンターキーを押してください");
+    } else if (strcmp(argv[1], "stop") == 0) {
+        if (offset_calc.active) {
+            offset_calc.active = false;
+            ESPSerial.println("オフセット計算を停止しました");
+        } else {
+            ESPSerial.println("オフセット計算は実行されていません");
+        }
     } else {
         ESPSerial.println("不明なオプション。get/reset/start を指定してください");
     }
@@ -919,6 +1100,75 @@ void cmd_load(int argc, char* argv[])
         ESPSerial.println("  - PIDゲイン");
     } else {
         ESPSerial.println("不明なオプション。offsets/mag_cal/pid/all を指定してください");
+    }
+}
+
+void cmd_optical(int argc, char* argv[])
+{
+    if (argc >= 2) {
+        // テスト期間を指定された場合
+        if (strcmp(argv[1], "stop") == 0) {
+            // テスト停止
+            if (optical_test.active) {
+                optical_test.active = false;
+                ESPSerial.println("オプティカルテストを停止しました");
+            } else {
+                ESPSerial.println("オプティカルテストは実行されていません");
+            }
+            return;
+        }
+        
+        int duration_sec = atoi(argv[1]);
+        if (duration_sec < 1 || duration_sec > 60) {
+            ESPSerial.println("テスト期間は1-60秒の範囲で指定してください");
+            ESPSerial.println("または 'optical stop' でテストを停止");
+            return;
+        }
+        
+        if (optical_test.active) {
+            ESPSerial.println("オプティカルテストは既に実行中です");
+            ESPSerial.println("'optical stop' で停止してから新しいテストを開始してください");
+            return;
+        }
+        
+        // ノンブロッキングテストを開始
+        optical_test.active = true;
+        optical_test.start_time = millis();
+        optical_test.duration_ms = duration_sec * 1000;
+        optical_test.last_print_time = optical_test.start_time;
+        optical_test.last_sample_time = optical_test.start_time;
+        optical_test.total_reads = 0;
+        optical_test.valid_reads = 0;
+        optical_test.failed_reads = 0;
+        optical_test.quality_failed = 0;
+        optical_test.total_movement_x = 0.0f;
+        optical_test.total_movement_y = 0.0f;
+        optical_test.max_velocity_x = 0.0f;
+        optical_test.max_velocity_y = 0.0f;
+        
+        ESPSerial.printf("=== PMW3901 実測テスト (%d秒) ===\n", duration_sec);
+        ESPSerial.printf("現在のCPI: %.1f (高度: %.3fm)\n", calculateCPI(Altitude2), Altitude2);
+        ESPSerial.println("ノンブロッキングテスト開始...");
+        ESPSerial.println("停止するには 'optical stop' またはエンターキーを押してください");
+        
+    } else {
+        // 現在の値を表示
+        ESPSerial.println("=== オプティカルフロー ===");
+        ESPSerial.printf("移動量 [m]: X=%.6f, Y=%.6f\n", Optical_flow_x, Optical_flow_y);
+        ESPSerial.printf("速度 [m/s]: X=%.3f, Y=%.3f\n", Velocity_x, Velocity_y);
+        ESPSerial.printf("生Delta値: X=%d, Y=%d\n", deltaX, deltaY);
+        ESPSerial.printf("現在の高度: %.3f m\n", Altitude2);
+        ESPSerial.printf("計算CPI: %.1f\n", calculateCPI(Altitude2));
+        ESPSerial.println("");
+        ESPSerial.println("使用法:");
+        ESPSerial.println("  optical [duration_sec] - 指定秒数のノンブロッキングテスト実行");
+        ESPSerial.println("  optical stop           - 実行中のテストを停止");
+        
+        if (optical_test.active) {
+            uint32_t elapsed = (millis() - optical_test.start_time) / 1000;
+            uint32_t total_duration = optical_test.duration_ms / 1000;
+            ESPSerial.printf("現在テスト実行中: %d/%d秒経過\n", elapsed, total_duration);
+        }
     }
 }
 

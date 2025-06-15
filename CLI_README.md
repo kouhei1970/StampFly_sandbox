@@ -112,7 +112,7 @@ StampFly> status
 動作モード: 2
 稼働時間: 123.45秒
 制御周期: 0.002500秒
-オフセットカウンタ: 800
+オフセットカウンタ: 4000
 ストリーミング: 無効
 ```
 
@@ -225,6 +225,11 @@ StampFly> reset all
 
 ### `offset` - センサーオフセット制御
 IMUセンサーのオフセット値の管理
+
+**注意**: オフセット計算には2つの方式があります：
+- **起動時自動計算**: 800サンプル（高速起動用）
+- **CLIコマンド**: 4000サンプル（高精度キャリブレーション用）
+
 ```bash
 # 現在のオフセット値を表示
 StampFly> offset get
@@ -234,19 +239,20 @@ StampFly> offset get
   Pitch: -0.000567
   Yaw:   0.000890
 加速度Zオフセット [G]: 0.987654
-オフセット計算回数: 800
+オフセット計算回数: 800  # 起動時自動計算の場合
 
 # オフセット値をリセット
 StampFly> offset reset
 センサーオフセットをリセットしました
 
-# オフセット計算を開始（800サンプル）
+# 高精度オフセット計算を開始（4000サンプル）
 StampFly> offset start
 オフセット計算を開始します
 機体を水平に静置してください...
-進行状況: 0/800
-進行状況: 100/800
-進行状況: 200/800
+400Hzループと同期してオフセット計算を実行します
+進行状況: 0/4000
+進行状況: 400/4000
+進行状況: 800/4000
 ...
 オフセット計算完了
 === センサーオフセット値 ===
@@ -255,7 +261,7 @@ StampFly> offset start
   Pitch: -0.000567
   Yaw:   0.000890
 加速度Zオフセット [G]: 0.987654
-オフセット計算回数: 800
+オフセット計算回数: 4000  # CLIコマンドの場合
 ```
 
 ### `mag_cal` - 磁気センサーキャリブレーション
@@ -355,22 +361,34 @@ PIDゲインをデフォルト値にリセットしました
 ## 設定保存・読み込み
 
 ### `save` - 設定保存
-各種設定をフラッシュメモリに永続保存
+各種設定をフラッシュメモリに永続保存（統一されたNVS API使用）
 ```bash
 # センサーオフセット値を保存
 StampFly> save offsets
+[SENSOR] Saving sensor offsets to NVS...
+[SENSOR] Sensor offsets saved successfully
 センサーオフセット値を保存しました
 
 # 磁気センサーキャリブレーションを保存
 StampFly> save mag_cal
+[MAG] Saving magnetometer calibration to NVS...
+[MAG] Magnetometer calibration saved successfully
 磁気センサーキャリブレーションを保存しました
 
 # PIDゲインを保存
 StampFly> save pid
+[PID] Saving PID gains to NVS...
+[PID] PID gains saved successfully
 PIDゲインを保存しました
 
 # 全設定を一括保存
 StampFly> save all
+[SENSOR] Saving sensor offsets to NVS...
+[SENSOR] Sensor offsets saved successfully
+[MAG] Saving magnetometer calibration to NVS...
+[MAG] Magnetometer calibration saved successfully
+[PID] Saving PID gains to NVS...
+[PID] PID gains saved successfully
 全設定を保存しました
   - センサーオフセット値
   - 磁気センサーキャリブレーション
@@ -378,22 +396,47 @@ StampFly> save all
 ```
 
 ### `load` - 設定読み込み
-保存された設定をフラッシュメモリから読み込み
+保存された設定をフラッシュメモリから読み込み（統一されたNVS API使用）
 ```bash
 # センサーオフセット値を読み込み
 StampFly> load offsets
+[SENSOR] Loading sensor offsets from NVS...
+[SENSOR] Loaded sensor offsets:
+[SENSOR] Roll rate offset: 0.001234
+[SENSOR] Pitch rate offset: -0.000567
+[SENSOR] Yaw rate offset: 0.000890
+[SENSOR] Accel Z offset: 0.987654
+[SENSOR] Offset counter: 800
 センサーオフセット値を読み込みました
 
 # 磁気センサーキャリブレーションを読み込み
 StampFly> load mag_cal
+[MAG] Loading magnetometer calibration from NVS...
+[MAG] Loaded magnetometer calibration:
+[MAG] Offset: X=1.23, Y=-0.45, Z=2.34
+[MAG] Scale: X=1.05, Y=0.98, Z=1.02
 磁気センサーキャリブレーションを読み込みました
 
 # PIDゲインを読み込み
 StampFly> load pid
+[PID] Loading PID gains from NVS...
+[PID] Loaded PID gains:
+[PID] Roll Rate: kp=0.650, ti=0.700, td=0.010, eta=0.125
+[PID] Pitch Rate: kp=0.950, ti=0.700, td=0.025, eta=0.125
+[PID] Yaw Rate: kp=3.000, ti=0.800, td=0.010, eta=0.125
+[PID] Roll Angle: kp=5.000, ti=4.000, td=0.040, eta=0.125
+[PID] Pitch Angle: kp=5.000, ti=4.000, td=0.040, eta=0.125
+[PID] Altitude: kp=0.380, ti=10.000, td=0.500, eta=0.125
 PIDゲインを読み込みました
 
 # 全設定を一括読み込み
 StampFly> load all
+[SENSOR] Loading sensor offsets from NVS...
+[SENSOR] Sensor offsets loaded successfully
+[MAG] Loading magnetometer calibration from NVS...
+[MAG] Magnetometer calibration loaded successfully
+[PID] Loading PID gains from NVS...
+[PID] PID gains loaded successfully
 全設定を読み込みました
   - センサーオフセット値
   - 磁気センサーキャリブレーション
@@ -538,11 +581,25 @@ StampFly> offset start
 - **電圧**: 400Hz
 - **ストリーミング**: 10ms〜10000ms（可変）
 
-### 永続化機能
-- **保存先**: ESP32内蔵フラッシュメモリ（NVS）
-- **保存データ**: センサーオフセット、磁気キャリブレーション、PIDゲイン
+### 永続化機能（統一されたNVS API）
+- **保存先**: ESP32内蔵フラッシュメモリ（NVS - Non-Volatile Storage）
+- **API**: 統一された直接NVS API（`nvs_open`, `nvs_set_blob`, `nvs_get_blob`）
+- **名前空間分離**: 
+  - センサーオフセット: `"sensor_offset"`
+  - 磁気キャリブレーション: `"mag_calib"`
+  - PIDゲイン: `"pid_gains"`
+- **キー名規則**: 
+  - 15文字以内（ESP32制限対応）
+  - 短縮形統一（例: `"roll_r_kp"`, `"pitch_a_ti"`, `"yaw_rate_off"`）
+- **保存データ**: 
+  - センサーオフセット（5項目）
+  - 磁気キャリブレーション（6項目）
+  - PIDゲイン（24項目）
+- **エラーハンドリング**: 個別パラメータの保存・読み込み成功/失敗を詳細ログ出力
+- **フォールバック**: 読み込み失敗時は自動的にデフォルト値を使用
 - **自動読み込み**: 起動時に保存された設定を自動適用
 - **データ保護**: 電源断時もデータを保持
+- **競合回避**: 完全に独立した名前空間で機能間の競合を排除
 
 ### 対応プラットフォーム
 - **Arduino IDE**: シリアルモニタ

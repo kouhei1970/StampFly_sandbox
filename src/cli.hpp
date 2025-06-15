@@ -58,6 +58,7 @@ void cmd_imu(int argc, char* argv[]);
 void cmd_tof(int argc, char* argv[]);
 void cmd_voltage(int argc, char* argv[]);
 void cmd_mag(int argc, char* argv[]);
+void cmd_optical(int argc, char* argv[]);
 void cmd_all_sensors(int argc, char* argv[]);
 void cmd_attitude(int argc, char* argv[]);
 void cmd_help(int argc, char* argv[]);

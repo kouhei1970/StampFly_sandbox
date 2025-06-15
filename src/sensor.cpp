@@ -31,6 +31,7 @@
 #include "i2c.hpp"
 #include "wrapper.hpp"
 #include "mag.hpp"
+#include "opt.hpp"
 #include <nvs_flash.h>
 #include <nvs.h>
 
@@ -71,7 +72,18 @@ volatile float Az = 0.0;
 volatile float Az_bias = 0.0;
 int16_t deltaX, deltaY;
 
+// オプティカルフロー関連変数
+volatile float Optical_flow_x = 0.0f;
+volatile float Optical_flow_y = 0.0f;
+volatile float Velocity_x = 0.0f;
+volatile float Velocity_y = 0.0f;
+
 volatile uint16_t Offset_counter = 0;
+
+// オフセット計算制御用フラグ
+volatile uint8_t Offset_calc_flag = 0;
+volatile uint16_t Offset_calc_counter = 0;
+volatile uint16_t Offset_calc_target = 0;
 
 volatile float Voltage;
 float Acc_norm = 0.0f;
@@ -98,8 +110,20 @@ void sensor_calc_offset_avarage(void)
     Pitch_rate_offset = (Offset_counter * Pitch_rate_offset + Pitch_rate_raw) / (Offset_counter + 1);
     Yaw_rate_offset = (Offset_counter * Yaw_rate_offset + Yaw_rate_raw) / (Offset_counter + 1);
     Accel_z_offset = (Offset_counter * Accel_z_offset + Accel_z_raw) / (Offset_counter + 1);
-
     Offset_counter++;
+}
+
+void sensor_start_offset_calc(uint16_t target_count)
+{
+    sensor_reset_offset();
+    Offset_calc_flag = 1;
+    Offset_calc_counter = 0;
+    Offset_calc_target = target_count;
+}
+
+uint8_t sensor_is_offset_calc_running(void)
+{
+    return Offset_calc_flag;
 }
 
 void test_voltage(void)
@@ -199,6 +223,15 @@ void sensor_init()
     raw_az_d_filter.set_parameter(0.1, 0.0025); // alt158
     az_filter.set_parameter(0.1, 0.0025);       // alt158
     alt_filter.set_parameter(0.005, 0.0025);
+
+    // PMW3901 Optical Flow Sensor initialization
+    if (powerUp(&optconfig)) {
+        ESPSerial.printf("PMW3901 INIT Success!\n\r");
+        initRegisters();
+    } else {
+        ESPSerial.printf("PMW3901 INIT failure!\n\r");
+        // オプティカルフローセンサーが初期化できなくても続行
+    }
 }
 
 float sensor_read(void)
@@ -341,6 +374,31 @@ float sensor_read(void)
             }
         }
 
+        // Get Optical Flow (PMW3901データシート準拠 + 品質チェック)
+        int16_t raw_deltaX, raw_deltaY;
+        uint8_t motion_status = readMotionCount(&raw_deltaX, &raw_deltaY);
+        
+        // motion_status: 0=新データなし, 1=有効データ, 2=品質不良で破棄
+        if (motion_status == 1 && sens_interval > 0.0f) {
+            // 有効なデータが利用可能な場合のみ更新
+            // PMW3901データシート準拠の移動量計算（高さベースCPI使用）
+            float movement_x, movement_y;
+            calculateMovementFromDelta(-raw_deltaY, raw_deltaX, &movement_x, &movement_y, Altitude2); // 軸変換、高度使用
+            
+            // 移動量を更新
+            Optical_flow_x = movement_x;
+            Optical_flow_y = movement_y;
+            
+            // 速度計算
+            Velocity_x = movement_x / sens_interval;
+            Velocity_y = movement_y / sens_interval;
+            
+            // 旧形式の変数も更新（互換性のため）
+            deltaX = -raw_deltaY; // X軸は前後方向
+            deltaY = raw_deltaX;  // Y軸は左右方向
+        }
+        // motion_status == 0 (新データなし) または motion_status == 2 (品質不良) の場合は前回値を保持
+
         // Get Altitude (30Hz)
         Az = az_filter.update(-Accel_z_d, sens_interval);
 
@@ -478,17 +536,17 @@ void save_sensor_offsets(void)
     float temp_accel_z_offset = Accel_z_offset;
     uint16_t temp_offset_counter = Offset_counter;
     
-    err = nvs_set_blob(nvs_handle, "roll_rate_offset", &temp_roll_rate_offset, sizeof(float));
-    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving roll_rate_offset: %s", esp_err_to_name(err));
+    err = nvs_set_blob(nvs_handle, "roll_rate_off", &temp_roll_rate_offset, sizeof(float));
+    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving roll_rate_off: %s", esp_err_to_name(err));
     
-    err = nvs_set_blob(nvs_handle, "pitch_rate_offset", &temp_pitch_rate_offset, sizeof(float));
-    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving pitch_rate_offset: %s", esp_err_to_name(err));
+    err = nvs_set_blob(nvs_handle, "pitch_rate_off", &temp_pitch_rate_offset, sizeof(float));
+    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving pitch_rate_off: %s", esp_err_to_name(err));
     
-    err = nvs_set_blob(nvs_handle, "yaw_rate_offset", &temp_yaw_rate_offset, sizeof(float));
-    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving yaw_rate_offset: %s", esp_err_to_name(err));
+    err = nvs_set_blob(nvs_handle, "yaw_rate_off", &temp_yaw_rate_offset, sizeof(float));
+    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving yaw_rate_off: %s", esp_err_to_name(err));
     
-    err = nvs_set_blob(nvs_handle, "accel_z_offset", &temp_accel_z_offset, sizeof(float));
-    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving accel_z_offset: %s", esp_err_to_name(err));
+    err = nvs_set_blob(nvs_handle, "accel_z_off", &temp_accel_z_offset, sizeof(float));
+    if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving accel_z_off: %s", esp_err_to_name(err));
     
     err = nvs_set_blob(nvs_handle, "offset_counter", &temp_offset_counter, sizeof(uint16_t));
     if (err != ESP_OK) ESP_LOGE("SENSOR", "Error saving offset_counter: %s", esp_err_to_name(err));
@@ -529,17 +587,17 @@ void load_sensor_offsets(void)
     // オフセット値を読み込み
     size_t size = sizeof(float);
     
-    err = nvs_get_blob(nvs_handle, "roll_rate_offset", (void*)&Roll_rate_offset, &size);
-    if (err != ESP_OK) ESP_LOGW("SENSOR", "Error loading roll_rate_offset: %s", esp_err_to_name(err));
+    err = nvs_get_blob(nvs_handle, "roll_rate_off", (void*)&Roll_rate_offset, &size);
+    if (err != ESP_OK) ESP_LOGW("SENSOR", "Error loading roll_rate_off: %s", esp_err_to_name(err));
     
-    err = nvs_get_blob(nvs_handle, "pitch_rate_offset", (void*)&Pitch_rate_offset, &size);
-    if (err != ESP_OK) ESP_LOGW("SENSOR", "Error loading pitch_rate_offset: %s", esp_err_to_name(err));
+    err = nvs_get_blob(nvs_handle, "pitch_rate_off", (void*)&Pitch_rate_offset, &size);
+    if (err != ESP_OK) ESP_LOGW("SENSOR", "Error loading pitch_rate_off: %s", esp_err_to_name(err));
     
-    err = nvs_get_blob(nvs_handle, "yaw_rate_offset", (void*)&Yaw_rate_offset, &size);
-    if (err != ESP_OK) ESP_LOGW("SENSOR", "Error loading yaw_rate_offset: %s", esp_err_to_name(err));
+    err = nvs_get_blob(nvs_handle, "yaw_rate_off", (void*)&Yaw_rate_offset, &size);
+    if (err != ESP_OK) ESP_LOGW("SENSOR", "Error loading yaw_rate_off: %s", esp_err_to_name(err));
     
-    err = nvs_get_blob(nvs_handle, "accel_z_offset", (void*)&Accel_z_offset, &size);
-    if (err != ESP_OK) ESP_LOGW("SENSOR", "Error loading accel_z_offset: %s", esp_err_to_name(err));
+    err = nvs_get_blob(nvs_handle, "accel_z_off", (void*)&Accel_z_offset, &size);
+    if (err != ESP_OK) ESP_LOGW("SENSOR", "Error loading accel_z_off: %s", esp_err_to_name(err));
     
     size = sizeof(uint16_t);
     err = nvs_get_blob(nvs_handle, "offset_counter", (void*)&Offset_counter, &size);

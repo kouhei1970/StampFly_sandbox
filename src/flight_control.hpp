@@ -72,7 +72,7 @@ void set_duty_rr(float duty);
 void set_duty_rl(float duty);
 
 // PIDゲイン保存・読み込み関数
-void save_pid_gains(void);
+bool save_pid_gains(void);
 void load_pid_gains(void);
 void reset_pid_gains_to_default(void);
 void update_pid_controllers(void);

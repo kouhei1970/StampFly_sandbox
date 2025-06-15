@@ -116,7 +116,21 @@ uint8_t powerUp(optconfig_t* optconfig) {
   optconfig->chipid = registerRead(0x00);
   optconfig->dipihc = registerRead(0x5F);
 
-  if (optconfig->chipid != 0x49 && optconfig->dipihc != 0xB8) return false;
+  // Chip IDの確認（必須）
+  if (optconfig->chipid != 0x49) {
+    ESPSerial.printf("エラー: PMW3901のChip IDが正しくありません (0x%02X)\n", optconfig->chipid);
+    return false;
+  }
+  
+  // Inv Chip IDの確認（より柔軟に）
+  // PMW3901の個体差により0xB6-0xB8の範囲で変動する場合がある
+  if (optconfig->dipihc < 0xB6 || optconfig->dipihc > 0xB8) {
+    ESPSerial.printf("警告: Inv Chip IDが期待値と異なります (0x%02X)\n", optconfig->dipihc);
+    ESPSerial.println("動作を継続しますが、センサーの動作を確認してください");
+  }
+  
+  ESPSerial.printf("PMW3901識別成功: Chip ID=0x%02X, Inv Chip ID=0x%02X\n", 
+                   optconfig->chipid, optconfig->dipihc);
 
   // Reading the motion registers one time
   registerRead(0x02);
@@ -128,12 +142,66 @@ uint8_t powerUp(optconfig_t* optconfig) {
   return true;
 }
 
-void readMotionCount(int16_t *deltaX, int16_t *deltaY)
+// PMW3901のCPI（Counts Per Inch）を高さから計算する関数
+// CPI = 11.914 * x^(-1) （xはセンサーの高さ[m]）
+float calculateCPI(float height_m)
 {
-  registerRead(0x02);
-  *deltaX = ((int16_t)registerRead(0x04) << 8) | registerRead(0x03);
-  *deltaY = ((int16_t)registerRead(0x06) << 8) | registerRead(0x05);
+  if (height_m <= 0.0f) {
+    return 1600.0f; // デフォルト値（高度不明時）
+  }
+  
+  // CPI = 11.914 / x の計算
+  return 11.914f / height_m;
 }
+
+// PMW3901データシートに基づく正しいモーションデータ読み取り（品質チェック付き）
+uint8_t readMotionCount(int16_t *deltaX, int16_t *deltaY)
+{
+  // 1. モーションレジスタ（0x02）を読み取り
+  uint8_t motion = registerRead(0x02);
+  
+  // 2. MOTビット（bit 7）をチェック - 新しいデータが利用可能かどうか
+  if (motion & 0x80) {
+    // 3. 新しいデータが利用可能な場合、X/Yレジスタを読み取り
+    *deltaX = ((int16_t)registerRead(0x04) << 8) | registerRead(0x03);
+    *deltaY = ((int16_t)registerRead(0x06) << 8) | registerRead(0x05);
+    
+    // 4. 品質チェック: SQUALとShutter_Upperを読み取り
+    uint8_t squal = registerRead(0x07);           // Surface Quality
+    uint8_t shutter_upper = registerRead(0x0C);   // Shutter Upper
+    
+    // 5. 品質判定: SQUALが0x19未満 かつ Shutter_Upperが0x1F の場合はデータを破棄
+    if (squal < 0x19 && shutter_upper == 0x1F) {
+      // データ品質が不十分なため破棄
+      *deltaX = 0;
+      *deltaY = 0;
+      return 2; // データあるが品質不良で破棄
+    }
+    
+    return 1; // 有効なデータ
+  } else {
+    // 新しいデータがない場合は前回値を保持
+    return 0; // 新しいデータなし
+  }
+}
+
+// PMW3901データシート準拠の移動量計算（高さベースCPI使用）
+void calculateMovementFromDelta(int16_t deltaX, int16_t deltaY, float *movement_x, float *movement_y, float height_m)
+{
+  // 高さからCPIを計算
+  float cpi = calculateCPI(height_m);
+  
+  // PMW3901データシートに基づく計算:
+  // 1. Delta値をCPIで割ってインチ単位の移動量を求める
+  float movement_inch_x = (float)deltaX / cpi;
+  float movement_inch_y = (float)deltaY / cpi;
+  
+  // 2. インチからメートルに変換（1インチ = 0.0254メートル）
+  *movement_x = movement_inch_x * 0.0254f;
+  *movement_y = movement_inch_y * 0.0254f;
+}
+
+
 
 void enableFrameCaptureMode(void)
 {

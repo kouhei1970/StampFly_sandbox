@@ -48,6 +48,8 @@
 #include "wrapper.hpp"
 #include "cli.hpp"
 #include <Preferences.h>
+#include <nvs_flash.h>
+#include <nvs.h>
 
 // モータPWM出力Pinのアサイン
 // Motor PWM Pin
@@ -306,6 +308,17 @@ void loop_400Hz(void)
 
     // Read Sensor Value
     sense_time = sensor_read();
+    
+    // オフセット計算処理（sensor_read()と同期）
+    if (Offset_calc_flag == 1) {
+        sensor_calc_offset_avarage();
+        Offset_calc_counter++;
+        
+        if (Offset_calc_counter >= Offset_calc_target) {
+            Offset_calc_flag = 0;  // オフセット計算完了
+        }
+    }
+    
     uint32_t cs_time = micros();
 
     // LED Drive
@@ -1190,84 +1203,264 @@ const float DEFAULT_alt_ti = 10.0f;
 const float DEFAULT_alt_td = 0.5f;
 const float DEFAULT_alt_eta = 0.125f;
 
-void save_pid_gains(void)
+bool save_pid_gains(void)
 {
-    preferences.begin("stampfly", false);
+    ESP_LOGI("PID", "Saving PID gains to NVS...");
+    
+    nvs_handle_t nvs_handle;
+    esp_err_t err;
+    bool success = true;
+    
+    // NVSを初期化
+    err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
+    
+    // NVSを開く
+    err = nvs_open("pid_gains", NVS_READWRITE, &nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE("PID", "Error opening NVS handle: %s", esp_err_to_name(err));
+        return false;
+    }
     
     // Rate control gains
-    preferences.putFloat("roll_rate_kp", Roll_rate_kp);
-    preferences.putFloat("roll_rate_ti", Roll_rate_ti);
-    preferences.putFloat("roll_rate_td", Roll_rate_td);
-    preferences.putFloat("roll_rate_eta", Roll_rate_eta);
+    err = nvs_set_blob(nvs_handle, "roll_r_kp", &Roll_rate_kp, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving roll_r_kp: %s", esp_err_to_name(err)); success = false; }
     
-    preferences.putFloat("pitch_rate_kp", Pitch_rate_kp);
-    preferences.putFloat("pitch_rate_ti", Pitch_rate_ti);
-    preferences.putFloat("pitch_rate_td", Pitch_rate_td);
-    preferences.putFloat("pitch_rate_eta", Pitch_rate_eta);
+    err = nvs_set_blob(nvs_handle, "roll_r_ti", &Roll_rate_ti, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving roll_r_ti: %s", esp_err_to_name(err)); success = false; }
     
-    preferences.putFloat("yaw_rate_kp", Yaw_rate_kp);
-    preferences.putFloat("yaw_rate_ti", Yaw_rate_ti);
-    preferences.putFloat("yaw_rate_td", Yaw_rate_td);
-    preferences.putFloat("yaw_rate_eta", Yaw_rate_eta);
+    err = nvs_set_blob(nvs_handle, "roll_r_td", &Roll_rate_td, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving roll_r_td: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "roll_r_eta", &Roll_rate_eta, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving roll_r_eta: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "pitch_r_kp", &Pitch_rate_kp, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving pitch_r_kp: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "pitch_r_ti", &Pitch_rate_ti, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving pitch_r_ti: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "pitch_r_td", &Pitch_rate_td, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving pitch_r_td: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "pitch_r_eta", &Pitch_rate_eta, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving pitch_r_eta: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "yaw_r_kp", &Yaw_rate_kp, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving yaw_r_kp: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "yaw_r_ti", &Yaw_rate_ti, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving yaw_r_ti: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "yaw_r_td", &Yaw_rate_td, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving yaw_r_td: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "yaw_r_eta", &Yaw_rate_eta, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving yaw_r_eta: %s", esp_err_to_name(err)); success = false; }
     
     // Angle control gains
-    preferences.putFloat("roll_angle_kp", Rall_angle_kp);
-    preferences.putFloat("roll_angle_ti", Rall_angle_ti);
-    preferences.putFloat("roll_angle_td", Rall_angle_td);
-    preferences.putFloat("roll_angle_eta", Rall_angle_eta);
+    err = nvs_set_blob(nvs_handle, "roll_a_kp", &Rall_angle_kp, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving roll_a_kp: %s", esp_err_to_name(err)); success = false; }
     
-    preferences.putFloat("pitch_angle_kp", Pitch_angle_kp);
-    preferences.putFloat("pitch_angle_ti", Pitch_angle_ti);
-    preferences.putFloat("pitch_angle_td", Pitch_angle_td);
-    preferences.putFloat("pitch_angle_eta", Pitch_angle_eta);
+    err = nvs_set_blob(nvs_handle, "roll_a_ti", &Rall_angle_ti, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving roll_a_ti: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "roll_a_td", &Rall_angle_td, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving roll_a_td: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "roll_a_eta", &Rall_angle_eta, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving roll_a_eta: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "pitch_a_kp", &Pitch_angle_kp, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving pitch_a_kp: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "pitch_a_ti", &Pitch_angle_ti, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving pitch_a_ti: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "pitch_a_td", &Pitch_angle_td, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving pitch_a_td: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "pitch_a_eta", &Pitch_angle_eta, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving pitch_a_eta: %s", esp_err_to_name(err)); success = false; }
     
     // Altitude control gains
-    preferences.putFloat("alt_kp", alt_kp);
-    preferences.putFloat("alt_ti", alt_ti);
-    preferences.putFloat("alt_td", alt_td);
-    preferences.putFloat("alt_eta", alt_eta);
+    err = nvs_set_blob(nvs_handle, "alt_kp", &alt_kp, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving alt_kp: %s", esp_err_to_name(err)); success = false; }
     
-    preferences.end();
+    err = nvs_set_blob(nvs_handle, "alt_ti", &alt_ti, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving alt_ti: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "alt_td", &alt_td, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving alt_td: %s", esp_err_to_name(err)); success = false; }
+    
+    err = nvs_set_blob(nvs_handle, "alt_eta", &alt_eta, sizeof(float));
+    if (err != ESP_OK) { ESP_LOGE("PID", "Error saving alt_eta: %s", esp_err_to_name(err)); success = false; }
+    
+    // 変更をコミット
+    err = nvs_commit(nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE("PID", "Error committing NVS: %s", esp_err_to_name(err));
+        success = false;
+    }
+    
+    // NVSを閉じる
+    nvs_close(nvs_handle);
+    
+    if (success) {
+        ESP_LOGI("PID", "PID gains saved successfully");
+    } else {
+        ESP_LOGE("PID", "Failed to save some PID gains");
+    }
+    
+    return success;
 }
 
 void load_pid_gains(void)
 {
-    preferences.begin("stampfly", true);
+    ESP_LOGI("PID", "Loading PID gains from NVS...");
+    
+    nvs_handle_t nvs_handle;
+    esp_err_t err;
+    
+    // NVSを初期化
+    err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
+    
+    // NVSを開く
+    err = nvs_open("pid_gains", NVS_READONLY, &nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGW("PID", "Error opening NVS handle: %s", esp_err_to_name(err));
+        ESP_LOGW("PID", "Using default PID gain values");
+        reset_pid_gains_to_default();
+        return;
+    }
+    
+    // PIDゲイン値を読み込み（デフォルト値をフォールバック）
+    size_t size = sizeof(float);
     
     // Rate control gains
-    Roll_rate_kp = preferences.getFloat("roll_rate_kp", DEFAULT_Roll_rate_kp);
-    Roll_rate_ti = preferences.getFloat("roll_rate_ti", DEFAULT_Roll_rate_ti);
-    Roll_rate_td = preferences.getFloat("roll_rate_td", DEFAULT_Roll_rate_td);
-    Roll_rate_eta = preferences.getFloat("roll_rate_eta", DEFAULT_Roll_rate_eta);
+    err = nvs_get_blob(nvs_handle, "roll_r_kp", &Roll_rate_kp, &size);
+    if (err != ESP_OK) { Roll_rate_kp = DEFAULT_Roll_rate_kp; ESP_LOGW("PID", "Using default roll_r_kp"); }
     
-    Pitch_rate_kp = preferences.getFloat("pitch_rate_kp", DEFAULT_Pitch_rate_kp);
-    Pitch_rate_ti = preferences.getFloat("pitch_rate_ti", DEFAULT_Pitch_rate_ti);
-    Pitch_rate_td = preferences.getFloat("pitch_rate_td", DEFAULT_Pitch_rate_td);
-    Pitch_rate_eta = preferences.getFloat("pitch_rate_eta", DEFAULT_Pitch_rate_eta);
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "roll_r_ti", &Roll_rate_ti, &size);
+    if (err != ESP_OK) { Roll_rate_ti = DEFAULT_Roll_rate_ti; ESP_LOGW("PID", "Using default roll_r_ti"); }
     
-    Yaw_rate_kp = preferences.getFloat("yaw_rate_kp", DEFAULT_Yaw_rate_kp);
-    Yaw_rate_ti = preferences.getFloat("yaw_rate_ti", DEFAULT_Yaw_rate_ti);
-    Yaw_rate_td = preferences.getFloat("yaw_rate_td", DEFAULT_Yaw_rate_td);
-    Yaw_rate_eta = preferences.getFloat("yaw_rate_eta", DEFAULT_Yaw_rate_eta);
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "roll_r_td", &Roll_rate_td, &size);
+    if (err != ESP_OK) { Roll_rate_td = DEFAULT_Roll_rate_td; ESP_LOGW("PID", "Using default roll_r_td"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "roll_r_eta", &Roll_rate_eta, &size);
+    if (err != ESP_OK) { Roll_rate_eta = DEFAULT_Roll_rate_eta; ESP_LOGW("PID", "Using default roll_r_eta"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "pitch_r_kp", &Pitch_rate_kp, &size);
+    if (err != ESP_OK) { Pitch_rate_kp = DEFAULT_Pitch_rate_kp; ESP_LOGW("PID", "Using default pitch_r_kp"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "pitch_r_ti", &Pitch_rate_ti, &size);
+    if (err != ESP_OK) { Pitch_rate_ti = DEFAULT_Pitch_rate_ti; ESP_LOGW("PID", "Using default pitch_r_ti"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "pitch_r_td", &Pitch_rate_td, &size);
+    if (err != ESP_OK) { Pitch_rate_td = DEFAULT_Pitch_rate_td; ESP_LOGW("PID", "Using default pitch_r_td"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "pitch_r_eta", &Pitch_rate_eta, &size);
+    if (err != ESP_OK) { Pitch_rate_eta = DEFAULT_Pitch_rate_eta; ESP_LOGW("PID", "Using default pitch_r_eta"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "yaw_r_kp", &Yaw_rate_kp, &size);
+    if (err != ESP_OK) { Yaw_rate_kp = DEFAULT_Yaw_rate_kp; ESP_LOGW("PID", "Using default yaw_r_kp"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "yaw_r_ti", &Yaw_rate_ti, &size);
+    if (err != ESP_OK) { Yaw_rate_ti = DEFAULT_Yaw_rate_ti; ESP_LOGW("PID", "Using default yaw_r_ti"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "yaw_r_td", &Yaw_rate_td, &size);
+    if (err != ESP_OK) { Yaw_rate_td = DEFAULT_Yaw_rate_td; ESP_LOGW("PID", "Using default yaw_r_td"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "yaw_r_eta", &Yaw_rate_eta, &size);
+    if (err != ESP_OK) { Yaw_rate_eta = DEFAULT_Yaw_rate_eta; ESP_LOGW("PID", "Using default yaw_r_eta"); }
     
     // Angle control gains
-    Rall_angle_kp = preferences.getFloat("roll_angle_kp", DEFAULT_Rall_angle_kp);
-    Rall_angle_ti = preferences.getFloat("roll_angle_ti", DEFAULT_Rall_angle_ti);
-    Rall_angle_td = preferences.getFloat("roll_angle_td", DEFAULT_Rall_angle_td);
-    Rall_angle_eta = preferences.getFloat("roll_angle_eta", DEFAULT_Rall_angle_eta);
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "roll_a_kp", &Rall_angle_kp, &size);
+    if (err != ESP_OK) { Rall_angle_kp = DEFAULT_Rall_angle_kp; ESP_LOGW("PID", "Using default roll_a_kp"); }
     
-    Pitch_angle_kp = preferences.getFloat("pitch_angle_kp", DEFAULT_Pitch_angle_kp);
-    Pitch_angle_ti = preferences.getFloat("pitch_angle_ti", DEFAULT_Pitch_angle_ti);
-    Pitch_angle_td = preferences.getFloat("pitch_angle_td", DEFAULT_Pitch_angle_td);
-    Pitch_angle_eta = preferences.getFloat("pitch_angle_eta", DEFAULT_Pitch_angle_eta);
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "roll_a_ti", &Rall_angle_ti, &size);
+    if (err != ESP_OK) { Rall_angle_ti = DEFAULT_Rall_angle_ti; ESP_LOGW("PID", "Using default roll_a_ti"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "roll_a_td", &Rall_angle_td, &size);
+    if (err != ESP_OK) { Rall_angle_td = DEFAULT_Rall_angle_td; ESP_LOGW("PID", "Using default roll_a_td"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "roll_a_eta", &Rall_angle_eta, &size);
+    if (err != ESP_OK) { Rall_angle_eta = DEFAULT_Rall_angle_eta; ESP_LOGW("PID", "Using default roll_a_eta"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "pitch_a_kp", &Pitch_angle_kp, &size);
+    if (err != ESP_OK) { Pitch_angle_kp = DEFAULT_Pitch_angle_kp; ESP_LOGW("PID", "Using default pitch_a_kp"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "pitch_a_ti", &Pitch_angle_ti, &size);
+    if (err != ESP_OK) { Pitch_angle_ti = DEFAULT_Pitch_angle_ti; ESP_LOGW("PID", "Using default pitch_a_ti"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "pitch_a_td", &Pitch_angle_td, &size);
+    if (err != ESP_OK) { Pitch_angle_td = DEFAULT_Pitch_angle_td; ESP_LOGW("PID", "Using default pitch_a_td"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "pitch_a_eta", &Pitch_angle_eta, &size);
+    if (err != ESP_OK) { Pitch_angle_eta = DEFAULT_Pitch_angle_eta; ESP_LOGW("PID", "Using default pitch_a_eta"); }
     
     // Altitude control gains
-    alt_kp = preferences.getFloat("alt_kp", DEFAULT_alt_kp);
-    alt_ti = preferences.getFloat("alt_ti", DEFAULT_alt_ti);
-    alt_td = preferences.getFloat("alt_td", DEFAULT_alt_td);
-    alt_eta = preferences.getFloat("alt_eta", DEFAULT_alt_eta);
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "alt_kp", &alt_kp, &size);
+    if (err != ESP_OK) { alt_kp = DEFAULT_alt_kp; ESP_LOGW("PID", "Using default alt_kp"); }
     
-    preferences.end();
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "alt_ti", &alt_ti, &size);
+    if (err != ESP_OK) { alt_ti = DEFAULT_alt_ti; ESP_LOGW("PID", "Using default alt_ti"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "alt_td", &alt_td, &size);
+    if (err != ESP_OK) { alt_td = DEFAULT_alt_td; ESP_LOGW("PID", "Using default alt_td"); }
+    
+    size = sizeof(float);
+    err = nvs_get_blob(nvs_handle, "alt_eta", &alt_eta, &size);
+    if (err != ESP_OK) { alt_eta = DEFAULT_alt_eta; ESP_LOGW("PID", "Using default alt_eta"); }
+    
+    // NVSを閉じる
+    nvs_close(nvs_handle);
+    
+    ESP_LOGI("PID", "Loaded PID gains:");
+    ESP_LOGI("PID", "Roll Rate: kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f", 
+             Roll_rate_kp, Roll_rate_ti, Roll_rate_td, Roll_rate_eta);
+    ESP_LOGI("PID", "Pitch Rate: kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f", 
+             Pitch_rate_kp, Pitch_rate_ti, Pitch_rate_td, Pitch_rate_eta);
+    ESP_LOGI("PID", "Yaw Rate: kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f", 
+             Yaw_rate_kp, Yaw_rate_ti, Yaw_rate_td, Yaw_rate_eta);
+    ESP_LOGI("PID", "Roll Angle: kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f", 
+             Rall_angle_kp, Rall_angle_ti, Rall_angle_td, Rall_angle_eta);
+    ESP_LOGI("PID", "Pitch Angle: kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f", 
+             Pitch_angle_kp, Pitch_angle_ti, Pitch_angle_td, Pitch_angle_eta);
+    ESP_LOGI("PID", "Altitude: kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f", 
+             alt_kp, alt_ti, alt_td, alt_eta);
 }
 
 void reset_pid_gains_to_default(void)
