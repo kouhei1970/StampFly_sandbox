@@ -1,8 +1,8 @@
 /*
  * MIT License
  *
- * Copyright (c) 2024 Kouhei Ito
- * Copyright (c) 2024 M5Stack
+ * Copyright (c) 2025 Kouhei Ito
+ * Copyright (c) 2025 M5Stack
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,16 @@ static int cli_buffer_index = 0;
 volatile bool streaming_enabled = false;
 volatile uint32_t stream_interval_ms = 100;
 static uint32_t last_stream_time = 0;
+
+// ストリーミング出力フォーマット
+typedef enum {
+    STREAM_FORMAT_DEFAULT = 0,  // デフォルト形式
+    STREAM_FORMAT_CSV,          // CSV形式（カンマ区切り）
+    STREAM_FORMAT_TSV,          // TSV形式（タブ区切り）
+    STREAM_FORMAT_TELEPLOT      // Teleplot形式
+} stream_format_t;
+
+static stream_format_t stream_format = STREAM_FORMAT_DEFAULT;
 
 // コマンド履歴機能
 static char command_history[CLI_HISTORY_SIZE][CLI_BUFFER_SIZE];
@@ -224,6 +234,56 @@ void cli_init(void)
     memset(temp_buffer, 0, sizeof(temp_buffer));
 }
 
+void output_stream_data()
+{
+    switch (stream_format) {
+        case STREAM_FORMAT_DEFAULT:
+            ESPSerial.printf("STREAM: ");
+            ESPSerial.printf("IMU[ax:%.3f,ay:%.3f,az:%.3f,gx:%.3f,gy:%.3f,gz:%.3f] ",
+                           Accel_x, Accel_y, Accel_z, Roll_rate, Pitch_rate, Yaw_rate);
+            ESPSerial.printf("ATT[r:%.2f,p:%.2f,y:%.2f] ",
+                           Roll_angle*57.3, Pitch_angle*57.3, Yaw_angle*57.3);
+            ESPSerial.printf("MAG[x:%.2f,y:%.2f,z:%.2f] ", Mx, My, Mz);
+            ESPSerial.printf("TOF[%dmm] ", Range);
+            ESPSerial.printf("VOLT[%.2fV] ", Voltage);
+            ESPSerial.printf("ALT[%.3fm]\n", Altitude2);
+            break;
+            
+        case STREAM_FORMAT_CSV:
+            ESPSerial.printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d,%.2f,%.3f\n",
+                           Accel_x, Accel_y, Accel_z, Roll_rate, Pitch_rate, Yaw_rate,
+                           Roll_angle*57.3, Pitch_angle*57.3, Yaw_angle*57.3,
+                           Mx, My, Mz, Range, Voltage, Altitude2);
+            break;
+            
+        case STREAM_FORMAT_TSV:
+            ESPSerial.printf("%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%d\t%.2f\t%.3f\n",
+                           Accel_x, Accel_y, Accel_z, Roll_rate, Pitch_rate, Yaw_rate,
+                           Roll_angle*57.3, Pitch_angle*57.3, Yaw_angle*57.3,
+                           Mx, My, Mz, Range, Voltage, Altitude2);
+            break;
+            
+        case STREAM_FORMAT_TELEPLOT:
+            uint32_t timestamp = millis();
+            ESPSerial.printf(">accel_x:%u:%.3f\n", timestamp, Accel_x);
+            ESPSerial.printf(">accel_y:%u:%.3f\n", timestamp, Accel_y);
+            ESPSerial.printf(">accel_z:%u:%.3f\n", timestamp, Accel_z);
+            ESPSerial.printf(">gyro_x:%u:%.3f\n", timestamp, Roll_rate);
+            ESPSerial.printf(">gyro_y:%u:%.3f\n", timestamp, Pitch_rate);
+            ESPSerial.printf(">gyro_z:%u:%.3f\n", timestamp, Yaw_rate);
+            ESPSerial.printf(">roll:%u:%.2f\n", timestamp, Roll_angle*57.3);
+            ESPSerial.printf(">pitch:%u:%.2f\n", timestamp, Pitch_angle*57.3);
+            ESPSerial.printf(">yaw:%u:%.2f\n", timestamp, Yaw_angle*57.3);
+            ESPSerial.printf(">mag_x:%u:%.2f\n", timestamp, Mx);
+            ESPSerial.printf(">mag_y:%u:%.2f\n", timestamp, My);
+            ESPSerial.printf(">mag_z:%u:%.2f\n", timestamp, Mz);
+            ESPSerial.printf(">range:%u:%d\n", timestamp, Range);
+            ESPSerial.printf(">voltage:%u:%.2f\n", timestamp, Voltage);
+            ESPSerial.printf(">altitude:%u:%.3f\n", timestamp, Altitude2);
+            break;
+    }
+}
+
 void cli_process(void)
 {
     // ストリーミングモードの処理
@@ -231,16 +291,18 @@ void cli_process(void)
         uint32_t current_time = millis();
         if (current_time - last_stream_time >= stream_interval_ms) {
             last_stream_time = current_time;
-            
-            // 全センサーデータをストリーミング出力
-            ESPSerial.printf("STREAM: ");
-            ESPSerial.printf("IMU[ax:%.3f,ay:%.3f,az:%.3f,gx:%.3f,gy:%.3f,gz:%.3f] ",
-                           Accel_x, Accel_y, Accel_z, Roll_rate, Pitch_rate, Yaw_rate);
-            ESPSerial.printf("ATT[r:%.2f,p:%.2f,y:%.2f] ",
-                           Roll_angle*57.3, Pitch_angle*57.3, Yaw_angle*57.3);
-            ESPSerial.printf("TOF[%dmm] ", Range);
-            ESPSerial.printf("VOLT[%.2fV] ", Voltage);
-            ESPSerial.printf("ALT[%.3fm]\n", Altitude2);
+            output_stream_data();
+        }
+        
+        // エンター入力でストリーミング停止
+        if (ESPSerial.available()) {
+            char c = ESPSerial.read();
+            if (c == '\n' || c == '\r') {
+                streaming_enabled = false;
+                ESPSerial.println("\nストリーミング停止");
+                ESPSerial.print("StampFly> ");
+                return;
+            }
         }
     }
     
@@ -449,15 +511,31 @@ void cmd_status(int argc, char* argv[])
 void cmd_stream(int argc, char* argv[])
 {
     if (argc < 2) {
-        ESPSerial.println("使用法: stream [start/stop] [interval_ms]");
+        ESPSerial.println("使用法: stream [start/stop/format] [interval_ms] [format]");
+        ESPSerial.println("  start [interval_ms] [format] - ストリーミング開始");
+        ESPSerial.println("  stop                         - ストリーミング停止");
+        ESPSerial.println("  format [format_type]         - 出力フォーマット設定");
+        ESPSerial.println("");
+        ESPSerial.println("フォーマット:");
+        ESPSerial.println("  default  - デフォルト形式 (STREAM: IMU[...] ATT[...] ...)");
+        ESPSerial.println("  csv      - CSV形式 (カンマ区切り)");
+        ESPSerial.println("  tsv      - TSV形式 (タブ区切り)");
+        ESPSerial.println("  teleplot - Teleplot形式 (>name:timestamp:value)");
+        ESPSerial.println("");
         ESPSerial.printf("現在の状態: %s\n", streaming_enabled ? "有効" : "無効");
         if (streaming_enabled) {
             ESPSerial.printf("間隔: %dms\n", stream_interval_ms);
         }
+        const char* format_names[] = {"default", "csv", "tsv", "teleplot"};
+        ESPSerial.printf("出力フォーマット: %s\n", format_names[stream_format]);
+        ESPSerial.println("");
+        ESPSerial.println("データ項目順序 (CSV/TSV):");
+        ESPSerial.println("ax,ay,az,gx,gy,gz,roll,pitch,yaw,mx,my,mz,range,voltage,altitude");
         return;
     }
     
     if (strcmp(argv[1], "start") == 0) {
+        // 間隔の設定
         if (argc >= 3) {
             int interval = atoi(argv[2]);
             if (interval >= 10 && interval <= 10000) {
@@ -467,15 +545,61 @@ void cmd_stream(int argc, char* argv[])
                 return;
             }
         }
+        
+        // フォーマットの設定
+        if (argc >= 4) {
+            if (strcmp(argv[3], "default") == 0) {
+                stream_format = STREAM_FORMAT_DEFAULT;
+            } else if (strcmp(argv[3], "csv") == 0) {
+                stream_format = STREAM_FORMAT_CSV;
+                ESPSerial.println("# CSV Header:");
+                ESPSerial.println("# ax,ay,az,gx,gy,gz,roll,pitch,yaw,mx,my,mz,range,voltage,altitude");
+            } else if (strcmp(argv[3], "tsv") == 0) {
+                stream_format = STREAM_FORMAT_TSV;
+                ESPSerial.println("# TSV Header:");
+                ESPSerial.println("# ax\tay\taz\tgx\tgy\tgz\troll\tpitch\tyaw\tmx\tmy\tmz\trange\tvoltage\taltitude");
+            } else if (strcmp(argv[3], "teleplot") == 0) {
+                stream_format = STREAM_FORMAT_TELEPLOT;
+            } else {
+                ESPSerial.println("不明なフォーマット。default/csv/tsv/teleplot を指定してください");
+                return;
+            }
+        }
+        
         streaming_enabled = true;
         last_stream_time = millis();
-        ESPSerial.printf("ストリーミング開始 (間隔: %dms)\n", stream_interval_ms);
-        ESPSerial.println("停止するには 'stream stop' を入力");
+        const char* format_names[] = {"default", "csv", "tsv", "teleplot"};
+        ESPSerial.printf("ストリーミング開始 (間隔: %dms, フォーマット: %s)\n", 
+                       stream_interval_ms, format_names[stream_format]);
+        ESPSerial.println("停止するにはエンターキーを押してください");
     } else if (strcmp(argv[1], "stop") == 0) {
         streaming_enabled = false;
         ESPSerial.println("ストリーミング停止");
+    } else if (strcmp(argv[1], "format") == 0) {
+        if (argc < 3) {
+            const char* format_names[] = {"default", "csv", "tsv", "teleplot"};
+            ESPSerial.printf("現在の出力フォーマット: %s\n", format_names[stream_format]);
+            ESPSerial.println("使用法: stream format [default/csv/tsv/teleplot]");
+            return;
+        }
+        
+        if (strcmp(argv[2], "default") == 0) {
+            stream_format = STREAM_FORMAT_DEFAULT;
+            ESPSerial.println("出力フォーマットをdefaultに設定しました");
+        } else if (strcmp(argv[2], "csv") == 0) {
+            stream_format = STREAM_FORMAT_CSV;
+            ESPSerial.println("出力フォーマットをCSVに設定しました");
+        } else if (strcmp(argv[2], "tsv") == 0) {
+            stream_format = STREAM_FORMAT_TSV;
+            ESPSerial.println("出力フォーマットをTSVに設定しました");
+        } else if (strcmp(argv[2], "teleplot") == 0) {
+            stream_format = STREAM_FORMAT_TELEPLOT;
+            ESPSerial.println("出力フォーマットをTeleplotに設定しました");
+        } else {
+            ESPSerial.println("不明なフォーマット。default/csv/tsv/teleplot を指定してください");
+        }
     } else {
-        ESPSerial.println("不明なオプション。start または stop を指定してください");
+        ESPSerial.println("不明なオプション。start/stop/format を指定してください");
     }
 }
 

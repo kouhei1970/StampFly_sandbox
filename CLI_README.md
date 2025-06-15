@@ -117,23 +117,93 @@ StampFly> status
 ```
 
 ### `stream` - データストリーミング制御
-リアルタイムデータストリーミングの制御
+リアルタイムデータストリーミングの制御（複数の出力フォーマット対応）
 ```bash
-# ストリーミング開始（100ms間隔）
-StampFly> stream start 100
-ストリーミング開始 (間隔: 100ms)
-停止するには 'stream stop' を入力
-STREAM: IMU[ax:0.123,ay:-0.045,az:0.987,gx:0.012,gy:-0.003,gz:0.001] ATT[r:1.23,p:-2.34,y:45.67] TOF[1234mm] VOLT[3.85V] ALT[1.234m]
-
-# ストリーミング停止
-StampFly> stream stop
-ストリーミング停止
-
-# 現在の状態確認
+# ヘルプ表示
 StampFly> stream
-使用法: stream [start/stop] [interval_ms]
+使用法: stream [start/stop/format] [interval_ms] [format]
+  start [interval_ms] [format] - ストリーミング開始
+  stop                         - ストリーミング停止
+  format [format_type]         - 出力フォーマット設定
+
+フォーマット:
+  default  - デフォルト形式 (STREAM: IMU[...] ATT[...] ...)
+  csv      - CSV形式 (カンマ区切り)
+  tsv      - TSV形式 (タブ区切り)
+  teleplot - Teleplot形式 (>name:timestamp:value)
+
 現在の状態: 無効
+出力フォーマット: default
+
+データ項目順序 (CSV/TSV):
+ax,ay,az,gx,gy,gz,roll,pitch,yaw,mx,my,mz,range,voltage,altitude
+
+# デフォルト形式でストリーミング開始（100ms間隔）
+StampFly> stream start 100
+ストリーミング開始 (間隔: 100ms, フォーマット: default)
+停止するにはエンターキーを押してください
+STREAM: IMU[ax:0.123,ay:-0.045,az:0.987,gx:0.012,gy:-0.003,gz:0.001] ATT[r:1.23,p:-2.34,y:45.67] MAG[x:12.34,y:-5.67,z:89.01] TOF[1234mm] VOLT[3.85V] ALT[1.234m]
+
+# CSV形式でストリーミング開始
+StampFly> stream start 100 csv
+# CSV Header:
+# ax,ay,az,gx,gy,gz,roll,pitch,yaw,mx,my,mz,range,voltage,altitude
+ストリーミング開始 (間隔: 100ms, フォーマット: csv)
+停止するにはエンターキーを押してください
+0.123,-0.045,0.987,0.012,-0.003,0.001,1.23,-2.34,45.67,12.34,-5.67,89.01,1234,3.85,1.234
+
+# Teleplot形式でストリーミング開始
+StampFly> stream start 50 teleplot
+ストリーミング開始 (間隔: 50ms, フォーマット: teleplot)
+停止するにはエンターキーを押してください
+>accel_x:12345:0.123
+>accel_y:12345:-0.045
+>accel_z:12345:0.987
+>gyro_x:12345:0.012
+>gyro_y:12345:-0.003
+>gyro_z:12345:0.001
+>roll:12345:1.23
+>pitch:12345:-2.34
+>yaw:12345:45.67
+>mag_x:12345:12.34
+>mag_y:12345:-5.67
+>mag_z:12345:89.01
+>range:12345:1234
+>voltage:12345:3.85
+>altitude:12345:1.234
+
+# 出力フォーマットのみ変更
+StampFly> stream format csv
+出力フォーマットをCSVに設定しました
+
+# エンターキーでストリーミング停止
+[エンターキー押下]
+ストリーミング停止
+StampFly> 
 ```
+
+#### 出力フォーマット詳細
+
+**1. Default形式**
+- 人間が読みやすい形式
+- 各センサーデータがラベル付きで表示
+- デバッグや手動確認に最適
+
+**2. CSV形式（カンマ区切り）**
+- データ解析ソフト（Excel、Python pandas等）で読み込み可能
+- ヘッダー行でデータ項目を明示
+- 数値データの統計解析に最適
+
+**3. TSV形式（タブ区切り）**
+- タブ区切りのテキストファイル
+- 一部のソフトウェアでCSVより扱いやすい
+- データベースへのインポートに適している
+
+**4. Teleplot形式**
+- リアルタイムプロット用の標準フォーマット
+- タイムスタンプ付きでグラフ化に最適
+- 各データ項目が個別の時系列として出力
+- Teleplotツールで直接可視化可能
 
 ### `reset` - システムリセット
 各種システムコンポーネントのリセット
