@@ -1,13 +1,16 @@
-#include <Arduino.h>
-#include <FastLED.h>
 #include "flight_control.hpp"
-
-//VL53L0X_ADDRESS           0x29
-//MPU6886_ADDRESS           0x68
-//BMP280_ADDRESS            0x76
+#include "wrapper.hpp"
+#include "esp_log.h"
 
 void setup() {  
+  // Serial初期化
+  ESPSerial.begin(115200);
+  
+  // ESP-IDFのログ出力設定
+  esp_log_level_set("*", ESP_LOG_VERBOSE);
+  
   init_copter();
+  
   delay(100);
 }
 

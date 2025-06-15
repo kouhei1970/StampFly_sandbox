@@ -25,6 +25,16 @@ class PID
     void printGain(void);
     void set_error(float err);
     float update(float err, float h);
+    
+    // PIDゲイン取得・設定関数
+    float get_kp(void) { return m_kp; }
+    float get_ti(void) { return m_ti; }
+    float get_td(void) { return m_td; }
+    float get_eta(void) { return m_eta; }
+    void set_kp(float kp) { m_kp = kp; }
+    void set_ti(float ti) { m_ti = ti; }
+    void set_td(float td) { m_td = td; }
+    void set_eta(float eta) { m_eta = eta; }
 };
 
 class Filter
