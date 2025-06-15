@@ -276,23 +276,24 @@ void output_stream_data()
             ESPSerial.printf("ATT[r:%.2f,p:%.2f,y:%.2f] ",
                            Roll_angle*57.3, Pitch_angle*57.3, Yaw_angle*57.3);
             ESPSerial.printf("MAG[x:%.2f,y:%.2f,z:%.2f] ", Mx, My, Mz);
+            ESPSerial.printf("OPT[vx:%.3f,vy:%.3f] ", Velocity_x, Velocity_y);
             ESPSerial.printf("TOF[%dmm] ", Range);
             ESPSerial.printf("VOLT[%.2fV] ", Voltage);
             ESPSerial.printf("ALT[%.3fm]\n", Altitude2);
             break;
             
         case STREAM_FORMAT_CSV:
-            ESPSerial.printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d,%.2f,%.3f\n",
+            ESPSerial.printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.3f,%.3f,%d,%.2f,%.3f\n",
                            Accel_x, Accel_y, Accel_z, Roll_rate, Pitch_rate, Yaw_rate,
                            Roll_angle*57.3, Pitch_angle*57.3, Yaw_angle*57.3,
-                           Mx, My, Mz, Range, Voltage, Altitude2);
+                           Mx, My, Mz, Velocity_x, Velocity_y, Range, Voltage, Altitude2);
             break;
             
         case STREAM_FORMAT_TSV:
-            ESPSerial.printf("%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%d\t%.2f\t%.3f\n",
+            ESPSerial.printf("%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.3f\t%.3f\t%d\t%.2f\t%.3f\n",
                            Accel_x, Accel_y, Accel_z, Roll_rate, Pitch_rate, Yaw_rate,
                            Roll_angle*57.3, Pitch_angle*57.3, Yaw_angle*57.3,
-                           Mx, My, Mz, Range, Voltage, Altitude2);
+                           Mx, My, Mz, Velocity_x, Velocity_y, Range, Voltage, Altitude2);
             break;
             
         case STREAM_FORMAT_TELEPLOT:
@@ -309,6 +310,8 @@ void output_stream_data()
             ESPSerial.printf(">mag_x:%u:%.2f\n", timestamp, Mx);
             ESPSerial.printf(">mag_y:%u:%.2f\n", timestamp, My);
             ESPSerial.printf(">mag_z:%u:%.2f\n", timestamp, Mz);
+            ESPSerial.printf(">velocity_x:%u:%.3f\n", timestamp, Velocity_x);
+            ESPSerial.printf(">velocity_y:%u:%.3f\n", timestamp, Velocity_y);
             ESPSerial.printf(">range:%u:%d\n", timestamp, Range);
             ESPSerial.printf(">voltage:%u:%.2f\n", timestamp, Voltage);
             ESPSerial.printf(">altitude:%u:%.3f\n", timestamp, Altitude2);
@@ -697,7 +700,7 @@ void cmd_stream(int argc, char* argv[])
         ESPSerial.printf("出力フォーマット: %s\n", format_names[stream_format]);
         ESPSerial.println("");
         ESPSerial.println("データ項目順序 (CSV/TSV):");
-        ESPSerial.println("ax,ay,az,gx,gy,gz,roll,pitch,yaw,mx,my,mz,range,voltage,altitude");
+        ESPSerial.println("ax,ay,az,gx,gy,gz,roll,pitch,yaw,mx,my,mz,vx,vy,range,voltage,altitude");
         return;
     }
     
