@@ -229,6 +229,14 @@ float get_trim_duty(float voltage);
 void flip(void);
 float get_rate_ref(float x); // スポーツモードのスティックとレート指令値との対応
 
+// 割り込み関数（マルチタスク版では使用しない）
+// Intrupt function (not used in multitask version)
+hw_timer_t *timer = NULL;
+void IRAM_ATTR onTimer()
+{
+    // マルチタスク版では使用しない
+    // Loop_flag = 1;
+}
 
 // Initialize Multi copter
 void init_copter(void)
@@ -261,8 +269,12 @@ void init_copter(void)
     // Initilize Radio control
     rc_init();
 
-    // 割り込み設定（マルチタスク版では削除）
-    // Initialize intrupt (removed in multitask version)
+    // 割り込み設定（マルチタスク版では無効化）
+    // Initialize intrupt (disabled in multitask version)
+    timer = timerBegin(0, 80, true);
+    timerAttachInterrupt(timer, &onTimer, false);
+    timerAlarmWrite(timer, 2500, true);
+    // timerAlarmEnable(timer);  // マルチタスク版では無効化
 
     // init button G0
     init_button();
@@ -280,9 +292,169 @@ void init_copter(void)
     cli_init();
 }
 
-// Main loop (マルチタスク版では削除 - removed in multitask version)
-// この関数はマルチタスクシステムでは使用されません
-// This function is not used in multitask system
+// Main loop
+void loop_400Hz(void)
+{
+    // static uint8_t led = 1;
+    float sense_time;
+    // 割り込みにより400Hzで以降のコードが実行
+    while (Loop_flag == 0);
+    Loop_flag = 0;
+
+    E_time = micros();
+    Old_Elapsed_time = Elapsed_time;
+    Elapsed_time = 1e-6 * (E_time - S_time);
+    Interval_time = Elapsed_time - Old_Elapsed_time;
+    // Timevalue += 0.0025f;
+
+    // Read Sensor Value
+    sense_time = sensor_read();
+    
+    // オフセット計算処理（sensor_read()と同期）
+    if (Offset_calc_flag == 1) {
+        sensor_calc_offset_avarage();
+        Offset_calc_counter++;
+        
+        if (Offset_calc_counter >= Offset_calc_target) {
+            Offset_calc_flag = 0;  // オフセット計算完了
+        }
+    }
+    
+    uint32_t cs_time = micros();
+
+    // LED Drive
+    led_drive();
+    // if (Interval_time>0.006)USBSerial.printf("%9.6f\n\r", Interval_time);
+    // USBSerial.printf("Mode=%d OverG=%d\n\r", Mode, OverG_flag);
+    // Begin Mode select
+    if (Mode == INIT_MODE)
+    {
+        motor_stop();
+        Elevator_center = 0.0f;
+        Aileron_center = 0.0f;
+        Rudder_center = 0.0f;
+        Roll_angle_offset = 0.0f;
+        Pitch_angle_offset = 0.0f;
+        Yaw_angle_offset = 0.0f;
+        sensor_reset_offset();
+        Mode = AVERAGE_MODE;
+        return;
+    }
+    else if (Mode == AVERAGE_MODE)
+    {
+        motor_stop();
+        // Gyro offset Estimate
+        if (OffsetCounter < AVERAGENUM)
+        {
+            sensor_calc_offset_avarage();
+            OffsetCounter++;
+            return;
+        }
+        // Mode change
+        Mode = PARKING_MODE;
+        S_time = micros();
+        return;
+    }
+    else if (Mode == FLIGHT_MODE)
+    {
+        Control_period = Interval_time;
+
+        // Judge Mode change
+        if (judge_mode_change() == 1)
+            Mode = AUTO_LANDING_MODE;
+        if (rc_isconnected() == 0)
+            Mode = AUTO_LANDING_MODE;
+        // if (Range0flag == 20) Mode = AUTO_LANDING_MODE;
+        if (OverG_flag == 1)
+            Mode = PARKING_MODE;
+        if (Mode != OldMode)
+            ahrs_reset();
+
+        // Get command
+        get_command();
+
+        // Angle Control
+        angle_control();
+
+        // Rate Control
+        rate_control();
+    }
+    else if (Mode == FLIP_MODE)
+    {
+        flip();
+    }
+    else if (Mode == PARKING_MODE)
+    {
+        // Judge Mode change
+        if (judge_mode_change() == 1)
+        {
+            for (int i = 0; i < 20; i++)
+            {
+                ahrs_reset();
+            }
+            Mode = FLIGHT_MODE;
+        }
+        if (last_ahrs_reset_flag != ahrs_reset_flag)
+        {
+            if (ahrs_reset_flag == 1)
+            {
+                buzzer_sound(4000, 200);
+                ahrs_reset();
+            }
+            last_ahrs_reset_flag = ahrs_reset_flag;
+        }
+
+        // Parking
+        motor_stop();
+        OverG_flag = 0;
+        Thrust0 = 0.0;
+        Alt_flag = 0;
+        // flip reset
+        Roll_rate_reference = 0;
+        Ahrs_reset_flag = 0;
+        Flip_counter = 0;
+        Flip_flag = 0;
+        Range0flag = 0;
+        Alt_ref = Alt_ref0;
+        // Stick_return_flag    = 0;
+        Landing_state = 0;
+        Auto_takeoff_counter = 0;
+        Thrust_filtered.reset();
+        EstimatedAltitude.reset();
+        Duty_fr.reset();
+        Duty_fl.reset();
+        Duty_rr.reset();
+        Duty_rl.reset();
+        // if(Mode != OldMode)ahrs_reset();
+    }
+    else if (Mode == AUTO_LANDING_MODE)
+    {
+        if (auto_landing() == 1)
+            Mode = PARKING_MODE;
+        if (judge_mode_change() == 1)
+            Mode = PARKING_MODE;
+
+        // Angle Control
+        angle_control();
+
+        // Rate Control
+        rate_control();
+    }
+
+    //// Telemetry
+    // telemetry_fast();
+    telemetry();
+
+    // CLI処理 (PARKING_MODEでのみ実行)
+    if (Mode == PARKING_MODE) {
+        cli_process();
+    }
+
+    uint32_t ce_time = micros();
+    // Dt_time          = ce_time - cs_time;
+    OldMode = Mode; // Memory now mode
+    // End of Loop_400Hz function
+}
 
 void flip(void)
 {
