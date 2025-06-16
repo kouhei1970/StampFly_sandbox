@@ -50,25 +50,6 @@ typedef enum {
 
 static stream_format_t stream_format = STREAM_FORMAT_DEFAULT;
 
-// オプティカルテスト用の状態管理
-typedef struct {
-    bool active;
-    uint32_t start_time;
-    uint32_t duration_ms;
-    uint32_t last_print_time;
-    uint32_t last_sample_time;
-    int total_reads;
-    int valid_reads;
-    int failed_reads;
-    int quality_failed;
-    float total_movement_x;
-    float total_movement_y;
-    float max_velocity_x;
-    float max_velocity_y;
-} optical_test_t;
-
-static optical_test_t optical_test = {false, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f, 0.0f, 0.0f, 0.0f};
-
 // オフセット計算用の状態管理
 typedef struct {
     bool active;
@@ -252,9 +233,9 @@ bool handle_arrow_keys(char c)
 
 void cli_init(void)
 {
-    ESPSerial.println("\n=== StampFly CLI Terminal ===");
-    ESPSerial.println("コマンド一覧は 'help' を入力してください");
-    ESPSerial.println("矢印キー↑↓でコマンド履歴を使用できます");
+    ESPSerial.printf("\r\n=== StampFly CLI Terminal ===\r\n");
+    ESPSerial.printf("コマンド一覧は 'help' を入力してください\r\n");
+    ESPSerial.printf("矢印キー↑↓でコマンド履歴を使用できます\r\n");
     ESPSerial.print("StampFly> ");
     cli_buffer_index = 0;
     streaming_enabled = false;
@@ -279,18 +260,18 @@ void output_stream_data()
             ESPSerial.printf("OPT[vx:%.3f,vy:%.3f] ", Velocity_x, Velocity_y);
             ESPSerial.printf("TOF[%dmm] ", Range);
             ESPSerial.printf("VOLT[%.2fV] ", Voltage);
-            ESPSerial.printf("ALT[%.3fm]\n", Altitude2);
+            ESPSerial.printf("ALT[%.3fm]\r\n", Altitude2);
             break;
             
         case STREAM_FORMAT_CSV:
-            ESPSerial.printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.3f,%.3f,%d,%.2f,%.3f\n",
+            ESPSerial.printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.3f,%.3f,%d,%.2f,%.3f\r\n",
                            Accel_x, Accel_y, Accel_z, Roll_rate, Pitch_rate, Yaw_rate,
                            Roll_angle*57.3, Pitch_angle*57.3, Yaw_angle*57.3,
                            Mx, My, Mz, Velocity_x, Velocity_y, Range, Voltage, Altitude2);
             break;
             
         case STREAM_FORMAT_TSV:
-            ESPSerial.printf("%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.3f\t%.3f\t%d\t%.2f\t%.3f\n",
+            ESPSerial.printf("%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.3f\t%.3f\t%d\t%.2f\t%.3f\r\n",
                            Accel_x, Accel_y, Accel_z, Roll_rate, Pitch_rate, Yaw_rate,
                            Roll_angle*57.3, Pitch_angle*57.3, Yaw_angle*57.3,
                            Mx, My, Mz, Velocity_x, Velocity_y, Range, Voltage, Altitude2);
@@ -298,23 +279,23 @@ void output_stream_data()
             
         case STREAM_FORMAT_TELEPLOT:
             uint32_t timestamp = millis();
-            ESPSerial.printf(">accel_x:%u:%.3f\n", timestamp, Accel_x);
-            ESPSerial.printf(">accel_y:%u:%.3f\n", timestamp, Accel_y);
-            ESPSerial.printf(">accel_z:%u:%.3f\n", timestamp, Accel_z);
-            ESPSerial.printf(">gyro_x:%u:%.3f\n", timestamp, Roll_rate);
-            ESPSerial.printf(">gyro_y:%u:%.3f\n", timestamp, Pitch_rate);
-            ESPSerial.printf(">gyro_z:%u:%.3f\n", timestamp, Yaw_rate);
-            ESPSerial.printf(">roll:%u:%.2f\n", timestamp, Roll_angle*57.3);
-            ESPSerial.printf(">pitch:%u:%.2f\n", timestamp, Pitch_angle*57.3);
-            ESPSerial.printf(">yaw:%u:%.2f\n", timestamp, Yaw_angle*57.3);
-            ESPSerial.printf(">mag_x:%u:%.2f\n", timestamp, Mx);
-            ESPSerial.printf(">mag_y:%u:%.2f\n", timestamp, My);
-            ESPSerial.printf(">mag_z:%u:%.2f\n", timestamp, Mz);
-            ESPSerial.printf(">velocity_x:%u:%.3f\n", timestamp, Velocity_x);
-            ESPSerial.printf(">velocity_y:%u:%.3f\n", timestamp, Velocity_y);
-            ESPSerial.printf(">range:%u:%d\n", timestamp, Range);
-            ESPSerial.printf(">voltage:%u:%.2f\n", timestamp, Voltage);
-            ESPSerial.printf(">altitude:%u:%.3f\n", timestamp, Altitude2);
+            ESPSerial.printf(">accel_x:%u:%.3f\r\n", timestamp, Accel_x);
+            ESPSerial.printf(">accel_y:%u:%.3f\r\n", timestamp, Accel_y);
+            ESPSerial.printf(">accel_z:%u:%.3f\r\n", timestamp, Accel_z);
+            ESPSerial.printf(">gyro_x:%u:%.3f\r\n", timestamp, Roll_rate);
+            ESPSerial.printf(">gyro_y:%u:%.3f\r\n", timestamp, Pitch_rate);
+            ESPSerial.printf(">gyro_z:%u:%.3f\r\n", timestamp, Yaw_rate);
+            ESPSerial.printf(">roll:%u:%.2f\r\n", timestamp, Roll_angle*57.3);
+            ESPSerial.printf(">pitch:%u:%.2f\r\n", timestamp, Pitch_angle*57.3);
+            ESPSerial.printf(">yaw:%u:%.2f\r\n", timestamp, Yaw_angle*57.3);
+            ESPSerial.printf(">mag_x:%u:%.2f\r\n", timestamp, Mx);
+            ESPSerial.printf(">mag_y:%u:%.2f\r\n", timestamp, My);
+            ESPSerial.printf(">mag_z:%u:%.2f\r\n", timestamp, Mz);
+            ESPSerial.printf(">velocity_x:%u:%.3f\r\n", timestamp, Velocity_x);
+            ESPSerial.printf(">velocity_y:%u:%.3f\r\n", timestamp, Velocity_y);
+            ESPSerial.printf(">range:%u:%d\r\n", timestamp, Range);
+            ESPSerial.printf(">voltage:%u:%.2f\r\n", timestamp, Voltage);
+            ESPSerial.printf(">altitude:%u:%.3f\r\n", timestamp, Altitude2);
             break;
     }
 }
@@ -322,89 +303,96 @@ void output_stream_data()
 void cli_process(void)
 {
     // オプティカルテストの処理
-    if (optical_test.active) {
+    if (Optical_test.active) {
         uint32_t current_time = millis();
         
         // テスト終了チェック
-        if (current_time >= optical_test.start_time + optical_test.duration_ms) {
+        if (current_time >= Optical_test.start_time + Optical_test.duration_ms) {
             // テスト完了
-            optical_test.active = false;
+            Optical_test.active = false;
             
-            uint32_t actual_duration = current_time - optical_test.start_time;
-            float total_distance = sqrt(optical_test.total_movement_x * optical_test.total_movement_x + 
-                                      optical_test.total_movement_y * optical_test.total_movement_y);
+            uint32_t actual_duration = current_time - Optical_test.start_time;
+            float total_distance = sqrt(Optical_test.total_movement_x * Optical_test.total_movement_x + 
+                                      Optical_test.total_movement_y * Optical_test.total_movement_y);
             
-            ESPSerial.println("\n=== テスト結果 ===");
-            ESPSerial.printf("実行時間: %d ms\n", actual_duration);
-            ESPSerial.printf("総読み取り: %d回 (%.1f Hz)\n", optical_test.total_reads, 
-                           optical_test.total_reads * 1000.0f / actual_duration);
-            ESPSerial.printf("有効データ: %d回 (%.1f Hz)\n", optical_test.valid_reads, 
-                           optical_test.valid_reads * 1000.0f / actual_duration);
-            ESPSerial.printf("失敗データ: %d回 (%.1f%%)\n", optical_test.failed_reads, 
-                           optical_test.failed_reads * 100.0f / optical_test.total_reads);
-            ESPSerial.printf("品質不良: %d回 (%.1f%%)\n", optical_test.quality_failed, 
-                           optical_test.quality_failed * 100.0f / optical_test.total_reads);
-            ESPSerial.printf("総移動量: X=%.6f m, Y=%.6f m\n", optical_test.total_movement_x, optical_test.total_movement_y);
-            ESPSerial.printf("総移動距離: %.6f m\n", total_distance);
-            ESPSerial.printf("平均速度: X=%.3f m/s, Y=%.3f m/s\n", 
-                           optical_test.total_movement_x / (actual_duration / 1000.0f), 
-                           optical_test.total_movement_y / (actual_duration / 1000.0f));
-            ESPSerial.printf("最大速度: X=%.3f m/s, Y=%.3f m/s\n", optical_test.max_velocity_x, optical_test.max_velocity_y);
-            ESPSerial.printf("使用CPI: %.1f\n", calculateCPI(Altitude2));
+            ESPSerial.printf("\r\n=== テスト結果 ===\r\n");
+            ESPSerial.printf("実行時間: %d ms\r\n", actual_duration);
+            ESPSerial.printf("総読み取り: %d回 (%.1f Hz)\r\n", Optical_test.total_reads, 
+                           Optical_test.total_reads * 1000.0f / actual_duration);
+            ESPSerial.printf("有効データ: %d回 (%.1f%%)\r\n", Optical_test.valid_reads, 
+                           Optical_test.valid_reads * 100.0f / Optical_test.total_reads);
+            ESPSerial.printf("無効データ: %d回 (%.1f%%)\r\n", Optical_test.failed_reads, 
+                           Optical_test.failed_reads * 100.0f / Optical_test.total_reads);
+            ESPSerial.printf("品質不良: %d回 (%.1f%%)\r\n", Optical_test.quality_failed, 
+                           Optical_test.quality_failed * 100.0f / Optical_test.total_reads);
+            ESPSerial.printf("総移動量: X=%.6f m, Y=%.6f m\r\n", Optical_test.total_movement_x, Optical_test.total_movement_y);
+            ESPSerial.printf("総移動距離: %.6f m\r\n", total_distance);
+            ESPSerial.printf("平均速度: X=%.3f m/s, Y=%.3f m/s\r\n", 
+                           Optical_test.total_movement_x / (actual_duration / 1000.0f), 
+                           Optical_test.total_movement_y / (actual_duration / 1000.0f));
+            ESPSerial.printf("最大速度: X=%.3f m/s, Y=%.3f m/s\r\n", Optical_test.max_velocity_x, Optical_test.max_velocity_y);
+            ESPSerial.printf("使用CPI: %.1f\r\n", calculateCPI(Altitude2));
             ESPSerial.print("StampFly> ");
             return;
         }
         
-        // サンプリング処理（10ms間隔）
-        if (current_time - optical_test.last_sample_time >= 10) {
-            optical_test.last_sample_time = current_time;
+        #if 0
+        // サンプリング処理（5ms間隔）
+        if (current_time - Optical_test.last_sample_time >= 5) {
+            Optical_test.last_sample_time = current_time;
             
             int16_t dx, dy;
             uint8_t motion_status = readMotionCount(&dx, &dy);
-            optical_test.total_reads++;
+            Optical_test.total_reads++;
             
             if (motion_status == 1) {
                 // 有効なデータ
-                optical_test.valid_reads++;
+                Optical_test.valid_reads++;
                 
                 // PMW3901データシート準拠の移動量計算（高さベースCPI使用）
                 float movement_x, movement_y;
                 calculateMovementFromDelta(-dy, dx, &movement_x, &movement_y, Altitude2); // 軸変換、高度使用
                 
-                optical_test.total_movement_x += movement_x;
-                optical_test.total_movement_y += movement_y;
+                Optical_test.total_movement_x += movement_x;
+                Optical_test.total_movement_y += movement_y;
                 
                 // 速度計算（10ms間隔）
                 float velocity_x = movement_x / 0.01f;
                 float velocity_y = movement_y / 0.01f;
                 
-                if (abs(velocity_x) > abs(optical_test.max_velocity_x)) optical_test.max_velocity_x = velocity_x;
-                if (abs(velocity_y) > abs(optical_test.max_velocity_y)) optical_test.max_velocity_y = velocity_y;
+                if (abs(velocity_x) > abs(Optical_test.max_velocity_x)) Optical_test.max_velocity_x = velocity_x;
+                if (abs(velocity_y) > abs(Optical_test.max_velocity_y)) Optical_test.max_velocity_y = velocity_y;
                 
             } else if (motion_status == 2) {
                 // 品質不良
-                optical_test.quality_failed++;
+                Optical_test.quality_failed++;
             } else {
                 // データなし
-                optical_test.failed_reads++;
+                Optical_test.failed_reads++;
             }
+            
         }
+        #endif
         
         // 1秒ごとに進行状況を表示
-        if (current_time - optical_test.last_print_time >= 1000) {
-            optical_test.last_print_time = current_time;
-            uint32_t elapsed = (current_time - optical_test.start_time) / 1000;
-            uint32_t total_duration = optical_test.duration_ms / 1000;
-            ESPSerial.printf("進行: %d/%d秒 (読取: %d, 有効: %d)\n", 
-                           elapsed, total_duration, optical_test.total_reads, optical_test.valid_reads);
+        if (current_time - Optical_test.last_print_time >= 1000) {
+            Optical_test.last_print_time = current_time;
+            uint32_t elapsed = (current_time - Optical_test.start_time) / 1000;
+            uint32_t total_duration = Optical_test.duration_ms / 1000;
+            ESPSerial.printf("進行: %d/%d秒 (読取: %d, 有効: %d, 不良 %d, 無効 %d)\r\n", 
+                           elapsed, total_duration, 
+                           Optical_test.total_reads, 
+                           Optical_test.valid_reads, 
+                           Optical_test.quality_failed, 
+                           Optical_test.failed_reads );
         }
         
         // エンター入力でテスト停止
         if (ESPSerial.available()) {
             char c = ESPSerial.read();
             if (c == '\n' || c == '\r') {
-                optical_test.active = false;
-                ESPSerial.println("\nオプティカルテスト停止");
+                Optical_test.active = false;
+                ESPSerial.printf("\r\nオプティカルテスト停止\r\n");
                 ESPSerial.print("StampFly> ");
                 return;
             }
@@ -422,23 +410,23 @@ void cli_process(void)
             
             // 100サンプルごとに進行状況を表示
             if (offset_calc.current_samples % 100 == 0) {
-                ESPSerial.printf("進行状況: %d/%d\n", offset_calc.current_samples, offset_calc.target_samples);
+                ESPSerial.printf("進行状況: %d/%d\r\n", offset_calc.current_samples, offset_calc.target_samples);
             }
             
             // 目標サンプル数に達したら完了
             if (offset_calc.current_samples >= offset_calc.target_samples) {
                 offset_calc.active = false;
                 
-                ESPSerial.println("オフセット計算完了");
+                ESPSerial.printf("オフセット計算完了\r\n");
                 
                 // オフセット結果を表示
-                ESPSerial.println("=== センサーオフセット値 ===");
-                ESPSerial.printf("ジャイロオフセット [rad/s]:\n");
-                ESPSerial.printf("  Roll:  %.6f\n", Roll_rate_offset);
-                ESPSerial.printf("  Pitch: %.6f\n", Pitch_rate_offset);
-                ESPSerial.printf("  Yaw:   %.6f\n", Yaw_rate_offset);
-                ESPSerial.printf("加速度Zオフセット [G]: %.6f\n", Accel_z_offset);
-                ESPSerial.printf("オフセット計算回数: %d\n", Offset_counter);
+                ESPSerial.printf("=== センサーオフセット値 ===\r\n");
+                ESPSerial.printf("ジャイロオフセット [rad/s]:\r\n");
+                ESPSerial.printf("  Roll:  %.6f\r\n", Roll_rate_offset);
+                ESPSerial.printf("  Pitch: %.6f\r\n", Pitch_rate_offset);
+                ESPSerial.printf("  Yaw:   %.6f\r\n", Yaw_rate_offset);
+                ESPSerial.printf("加速度Zオフセット [G]: %.6f\r\n", Accel_z_offset);
+                ESPSerial.printf("オフセット計算回数: %d\r\n", Offset_counter);
                 ESPSerial.print("StampFly> ");
                 return;
             }
@@ -449,7 +437,7 @@ void cli_process(void)
             char c = ESPSerial.read();
             if (c == '\n' || c == '\r') {
                 offset_calc.active = false;
-                ESPSerial.println("\nオフセット計算停止");
+                ESPSerial.printf("\r\nオフセット計算停止\r\n");
                 ESPSerial.print("StampFly> ");
                 return;
             }
@@ -469,7 +457,7 @@ void cli_process(void)
             char c = ESPSerial.read();
             if (c == '\n' || c == '\r') {
                 streaming_enabled = false;
-                ESPSerial.println("\nストリーミング停止");
+                ESPSerial.printf("\r\nストリーミング停止\r\n");
                 ESPSerial.print("StampFly> ");
                 return;
             }
@@ -490,7 +478,7 @@ void cli_process(void)
                 cli_buffer[cli_buffer_index] = '\0';
                 
                 // 改行を明示的に出力
-                ESPSerial.println();
+                ESPSerial.printf("\r\n");
                 
                 // コマンド履歴に追加
                 add_to_history(cli_buffer);
@@ -506,7 +494,7 @@ void cli_process(void)
                 }
             } else {
                 // 空のコマンドの場合は改行してプロンプトを表示
-                ESPSerial.println();
+                ESPSerial.printf("\r\n");
                 if (!streaming_enabled) {
                     ESPSerial.print("StampFly> ");
                 }
@@ -575,132 +563,132 @@ void cli_execute_command(char* command_line)
         }
     }
     
-    ESPSerial.printf("不明なコマンド: %s\n", argv[0]);
-    ESPSerial.println("'help' でコマンド一覧を表示");
+    ESPSerial.printf("不明なコマンド: %s\r\n", argv[0]);
+    ESPSerial.printf("'help' でコマンド一覧を表示\r\n");
 }
 
 void cmd_help(int argc, char* argv[])
 {
-    ESPSerial.println("\n=== 利用可能なコマンド ===");
+    ESPSerial.printf("\r\n=== 利用可能なコマンド ===\r\n");
     for (int i = 0; cli_commands[i].command != NULL; i++) {
-        ESPSerial.printf("%-10s : %s\n", cli_commands[i].command, cli_commands[i].description);
+        ESPSerial.printf("%-10s : %s\r\n", cli_commands[i].command, cli_commands[i].description);
     }
-    ESPSerial.println();
+    ESPSerial.printf("\r\n");
 }
 
 void cmd_imu(int argc, char* argv[])
 {
-    ESPSerial.println("=== IMU データ ===");
-    ESPSerial.printf("加速度 [G]: X=%.3f, Y=%.3f, Z=%.3f\n", Accel_x, Accel_y, Accel_z);
-    ESPSerial.printf("角速度 [rad/s]: X=%.3f, Y=%.3f, Z=%.3f\n", Roll_rate, Pitch_rate, Yaw_rate);
-    ESPSerial.printf("生データ加速度: X=%.3f, Y=%.3f, Z=%.3f\n", Accel_x_raw, Accel_y_raw, Accel_z_raw);
-    ESPSerial.printf("生データ角速度: X=%.3f, Y=%.3f, Z=%.3f\n", Roll_rate_raw, Pitch_rate_raw, Yaw_rate_raw);
+    ESPSerial.printf("=== IMU データ ===\r\n");
+    ESPSerial.printf("加速度 [G]: X=%.3f, Y=%.3f, Z=%.3f\r\n", Accel_x, Accel_y, Accel_z);
+    ESPSerial.printf("角速度 [rad/s]: X=%.3f, Y=%.3f, Z=%.3f\r\n", Roll_rate, Pitch_rate, Yaw_rate);
+    ESPSerial.printf("生データ加速度: X=%.3f, Y=%.3f, Z=%.3f\r\n", Accel_x_raw, Accel_y_raw, Accel_z_raw);
+    ESPSerial.printf("生データ角速度: X=%.3f, Y=%.3f, Z=%.3f\r\n", Roll_rate_raw, Pitch_rate_raw, Yaw_rate_raw);
 }
 
 void cmd_tof(int argc, char* argv[])
 {
-    ESPSerial.println("=== ToF センサー ===");
-    ESPSerial.printf("下向き距離: %d mm (生データ: %d mm)\n", Range, RawRange);
-    ESPSerial.printf("前向き距離: %d mm (生データ: %d mm)\n", RangeFront, RawRangeFront);
-    ESPSerial.printf("フィルタ済み高度: %.3f m\n", Altitude);
-    ESPSerial.printf("推定高度: %.3f m\n", Altitude2);
-    ESPSerial.printf("高度速度: %.3f m/s\n", Alt_velocity);
+    ESPSerial.printf("=== ToF センサー ===\r\n");
+    ESPSerial.printf("下向き距離: %d mm (生データ: %d mm)\r\n", Range, RawRange);
+    ESPSerial.printf("前向き距離: %d mm (生データ: %d mm)\r\n", RangeFront, RawRangeFront);
+    ESPSerial.printf("フィルタ済み高度: %.3f m\r\n", Altitude);
+    ESPSerial.printf("推定高度: %.3f m\r\n", Altitude2);
+    ESPSerial.printf("高度速度: %.3f m/s\r\n", Alt_velocity);
 }
 
 void cmd_voltage(int argc, char* argv[])
 {
-    ESPSerial.println("=== 電圧情報 ===");
-    ESPSerial.printf("バッテリー電圧: %.2f V\n", Voltage);
+    ESPSerial.printf("=== 電圧情報 ===\r\n");
+    ESPSerial.printf("バッテリー電圧: %.2f V\r\n", Voltage);
     if (Under_voltage_flag > 0) {
-        ESPSerial.printf("警告: 低電圧検出 (フラグ: %d)\n", Under_voltage_flag);
+        ESPSerial.printf("警告: 低電圧検出 (フラグ: %d)\r\n", Under_voltage_flag);
     }
 }
 
 void cmd_mag(int argc, char* argv[])
 {
-    ESPSerial.println("=== 磁気センサー ===");
-    ESPSerial.printf("磁場 [μT]: X=%.2f, Y=%.2f, Z=%.2f\n", Mx, My, Mz);
-    ESPSerial.printf("オフセット: X=%.2f, Y=%.2f, Z=%.2f\n", Mx0, My0, Mz0);
-    ESPSerial.printf("平均値: X=%.2f, Y=%.2f, Z=%.2f\n", Mx_ave, My_ave, Mz_ave);
+    ESPSerial.printf("=== 磁気センサー ===\r\n");
+    ESPSerial.printf("磁場 [μT]: X=%.2f, Y=%.2f, Z=%.2f\r\n", Mx, My, Mz);
+    ESPSerial.printf("オフセット: X=%.2f, Y=%.2f, Z=%.2f\r\n", Mx0, My0, Mz0);
+    ESPSerial.printf("平均値: X=%.2f, Y=%.2f, Z=%.2f\r\n", Mx_ave, My_ave, Mz_ave);
 }
 
 void cmd_attitude(int argc, char* argv[])
 {
-    ESPSerial.println("=== 姿勢角 ===");
-    ESPSerial.printf("Roll:  %.2f° (%.4f rad)\n", Roll_angle * 57.2958, Roll_angle);
-    ESPSerial.printf("Pitch: %.2f° (%.4f rad)\n", Pitch_angle * 57.2958, Pitch_angle);
-    ESPSerial.printf("Yaw:   %.2f° (%.4f rad)\n", Yaw_angle * 57.2958, Yaw_angle);
+    ESPSerial.printf("=== 姿勢角 ===\r\n");
+    ESPSerial.printf("Roll:  %.2f° (%.4f rad)\r\n", Roll_angle * 57.2958, Roll_angle);
+    ESPSerial.printf("Pitch: %.2f° (%.4f rad)\r\n", Pitch_angle * 57.2958, Pitch_angle);
+    ESPSerial.printf("Yaw:   %.2f° (%.4f rad)\r\n", Yaw_angle * 57.2958, Yaw_angle);
 }
 
 void cmd_all_sensors(int argc, char* argv[])
 {
-    ESPSerial.println("=== 全センサーデータ ===");
+    ESPSerial.printf("=== 全センサーデータ ===\r\n");
     
     // IMU
-    ESPSerial.printf("IMU - 加速度[G]: X=%.3f, Y=%.3f, Z=%.3f\n", Accel_x, Accel_y, Accel_z);
-    ESPSerial.printf("IMU - 角速度[rad/s]: X=%.3f, Y=%.3f, Z=%.3f\n", Roll_rate, Pitch_rate, Yaw_rate);
+    ESPSerial.printf("IMU - 加速度[G]: X=%.3f, Y=%.3f, Z=%.3f\r\n", Accel_x, Accel_y, Accel_z);
+    ESPSerial.printf("IMU - 角速度[rad/s]: X=%.3f, Y=%.3f, Z=%.3f\r\n", Roll_rate, Pitch_rate, Yaw_rate);
     
     // 姿勢角
-    ESPSerial.printf("姿勢角[°]: Roll=%.2f, Pitch=%.2f, Yaw=%.2f\n", 
+    ESPSerial.printf("姿勢角[°]: Roll=%.2f, Pitch=%.2f, Yaw=%.2f\r\n", 
                    Roll_angle*57.3, Pitch_angle*57.3, Yaw_angle*57.3);
     
     // ToF
-    ESPSerial.printf("ToF - 距離: 下=%dmm, 前=%dmm, 高度=%.3fm\n", Range, RangeFront, Altitude2);
+    ESPSerial.printf("ToF - 距離: 下=%dmm, 前=%dmm, 高度=%.3fm\r\n", Range, RangeFront, Altitude2);
     
     // 電圧
-    ESPSerial.printf("電圧: %.2fV\n", Voltage);
+    ESPSerial.printf("電圧: %.2fV\r\n", Voltage);
     
     // 磁気センサー
-    ESPSerial.printf("磁場[μT]: X=%.2f, Y=%.2f, Z=%.2f\n", Mx, My, Mz);
+    ESPSerial.printf("磁場[μT]: X=%.2f, Y=%.2f, Z=%.2f\r\n", Mx, My, Mz);
 }
 
 void cmd_status(int argc, char* argv[])
 {
-    ESPSerial.println("=== システム状態 ===");
-    ESPSerial.printf("動作モード: %d\n", Mode);
-    ESPSerial.printf("稼働時間: %.2f秒\n", millis() / 1000.0);
-    ESPSerial.printf("制御周期: %.6f秒\n", Control_period);
-    ESPSerial.printf("オフセットカウンタ: %d\n", Offset_counter);
+    ESPSerial.printf("=== システム状態 ===\r\n");
+    ESPSerial.printf("動作モード: %d\r\n", Mode);
+    ESPSerial.printf("稼働時間: %.2f秒\r\n", millis() / 1000.0);
+    ESPSerial.printf("制御周期: %.6f秒\r\n", Control_period);
+    ESPSerial.printf("オフセットカウンタ: %d\r\n", Offset_counter);
     
     if (OverG_flag) {
-        ESPSerial.printf("警告: 過G検出 (%.2fG)\n", Over_g);
+        ESPSerial.printf("警告: 過G検出 (%.2fG)\r\n", Over_g);
     }
     if (Range0flag > 0) {
-        ESPSerial.printf("警告: 距離センサー異常 (フラグ: %d)\n", Range0flag);
+        ESPSerial.printf("警告: 距離センサー異常 (フラグ: %d)\r\n", Range0flag);
     }
     if (Under_voltage_flag > 0) {
-        ESPSerial.printf("警告: 低電圧 (フラグ: %d)\n", Under_voltage_flag);
+        ESPSerial.printf("警告: 低電圧 (フラグ: %d)\r\n", Under_voltage_flag);
     }
     
-    ESPSerial.printf("ストリーミング: %s\n", streaming_enabled ? "有効" : "無効");
+    ESPSerial.printf("ストリーミング: %s\r\n", streaming_enabled ? "有効" : "無効");
     if (streaming_enabled) {
-        ESPSerial.printf("ストリーミング間隔: %dms\n", stream_interval_ms);
+        ESPSerial.printf("ストリーミング間隔: %dms\r\n", stream_interval_ms);
     }
 }
 
 void cmd_stream(int argc, char* argv[])
 {
     if (argc < 2) {
-        ESPSerial.println("使用法: stream [start/stop/format] [interval_ms] [format]");
-        ESPSerial.println("  start [interval_ms] [format] - ストリーミング開始");
-        ESPSerial.println("  stop                         - ストリーミング停止");
-        ESPSerial.println("  format [format_type]         - 出力フォーマット設定");
-        ESPSerial.println("");
-        ESPSerial.println("フォーマット:");
-        ESPSerial.println("  default  - デフォルト形式 (STREAM: IMU[...] ATT[...] ...)");
-        ESPSerial.println("  csv      - CSV形式 (カンマ区切り)");
-        ESPSerial.println("  tsv      - TSV形式 (タブ区切り)");
-        ESPSerial.println("  teleplot - Teleplot形式 (>name:timestamp:value)");
-        ESPSerial.println("");
-        ESPSerial.printf("現在の状態: %s\n", streaming_enabled ? "有効" : "無効");
+        ESPSerial.printf("使用法: stream [start/stop/format] [interval_ms] [format]\r\n");
+        ESPSerial.printf("  start [interval_ms] [format] - ストリーミング開始\r\n");
+        ESPSerial.printf("  stop                         - ストリーミング停止\r\n");
+        ESPSerial.printf("  format [format_type]         - 出力フォーマット設定\r\n");
+        ESPSerial.printf("\r\n");
+        ESPSerial.printf("フォーマット:\r\n");
+        ESPSerial.printf("  default  - デフォルト形式 (STREAM: IMU[...] ATT[...] ...)\r\n");
+        ESPSerial.printf("  csv      - CSV形式 (カンマ区切り)\r\n");
+        ESPSerial.printf("  tsv      - TSV形式 (タブ区切り)\r\n");
+        ESPSerial.printf("  teleplot - Teleplot形式 (>name:timestamp:value)\r\n");
+        ESPSerial.printf("\r\n");
+        ESPSerial.printf("現在の状態: %s\r\n", streaming_enabled ? "有効" : "無効");
         if (streaming_enabled) {
-            ESPSerial.printf("間隔: %dms\n", stream_interval_ms);
+            ESPSerial.printf("間隔: %dms\r\n", stream_interval_ms);
         }
         const char* format_names[] = {"default", "csv", "tsv", "teleplot"};
-        ESPSerial.printf("出力フォーマット: %s\n", format_names[stream_format]);
-        ESPSerial.println("");
-        ESPSerial.println("データ項目順序 (CSV/TSV):");
-        ESPSerial.println("ax,ay,az,gx,gy,gz,roll,pitch,yaw,mx,my,mz,vx,vy,range,voltage,altitude");
+        ESPSerial.printf("出力フォーマット: %s\r\n", format_names[stream_format]);
+        ESPSerial.printf("\r\n");
+        ESPSerial.printf("データ項目順序 (CSV/TSV):\r\n");
+        ESPSerial.printf("ax,ay,az,gx,gy,gz,roll,pitch,yaw,mx,my,mz,vx,vy,range,voltage,altitude\r\n");
         return;
     }
     
@@ -711,7 +699,7 @@ void cmd_stream(int argc, char* argv[])
             if (interval >= 10 && interval <= 10000) {
                 stream_interval_ms = interval;
             } else {
-                ESPSerial.println("間隔は10-10000msの範囲で指定してください");
+                ESPSerial.printf("間隔は10-10000msの範囲で指定してください\r\n");
                 return;
             }
         }
@@ -722,16 +710,16 @@ void cmd_stream(int argc, char* argv[])
                 stream_format = STREAM_FORMAT_DEFAULT;
             } else if (strcmp(argv[3], "csv") == 0) {
                 stream_format = STREAM_FORMAT_CSV;
-                ESPSerial.println("# CSV Header:");
-                ESPSerial.println("# ax,ay,az,gx,gy,gz,roll,pitch,yaw,mx,my,mz,range,voltage,altitude");
+                ESPSerial.printf("# CSV Header:\r\n");
+                ESPSerial.printf("# ax,ay,az,gx,gy,gz,roll,pitch,yaw,mx,my,mz,range,voltage,altitude\r\n");
             } else if (strcmp(argv[3], "tsv") == 0) {
                 stream_format = STREAM_FORMAT_TSV;
-                ESPSerial.println("# TSV Header:");
-                ESPSerial.println("# ax\tay\taz\tgx\tgy\tgz\troll\tpitch\tyaw\tmx\tmy\tmz\trange\tvoltage\taltitude");
+                ESPSerial.printf("# TSV Header:\r\n");
+                ESPSerial.printf("# ax\tay\taz\tgx\tgy\tgz\troll\tpitch\tyaw\tmx\tmy\tmz\trange\tvoltage\taltitude\r\n");
             } else if (strcmp(argv[3], "teleplot") == 0) {
                 stream_format = STREAM_FORMAT_TELEPLOT;
             } else {
-                ESPSerial.println("不明なフォーマット。default/csv/tsv/teleplot を指定してください");
+                ESPSerial.printf("不明なフォーマット。default/csv/tsv/teleplot を指定してください\r\n");
                 return;
             }
         }
@@ -739,67 +727,67 @@ void cmd_stream(int argc, char* argv[])
         streaming_enabled = true;
         last_stream_time = millis();
         const char* format_names[] = {"default", "csv", "tsv", "teleplot"};
-        ESPSerial.printf("ストリーミング開始 (間隔: %dms, フォーマット: %s)\n", 
+        ESPSerial.printf("ストリーミング開始 (間隔: %dms, フォーマット: %s)\r\n", 
                        stream_interval_ms, format_names[stream_format]);
-        ESPSerial.println("停止するにはエンターキーを押してください");
+        ESPSerial.printf("停止するにはエンターキーを押してください\r\n");
     } else if (strcmp(argv[1], "stop") == 0) {
         streaming_enabled = false;
-        ESPSerial.println("ストリーミング停止");
+        ESPSerial.printf("ストリーミング停止\r\n");
     } else if (strcmp(argv[1], "format") == 0) {
         if (argc < 3) {
             const char* format_names[] = {"default", "csv", "tsv", "teleplot"};
-            ESPSerial.printf("現在の出力フォーマット: %s\n", format_names[stream_format]);
-            ESPSerial.println("使用法: stream format [default/csv/tsv/teleplot]");
+            ESPSerial.printf("現在の出力フォーマット: %s\r\n", format_names[stream_format]);
+            ESPSerial.printf("使用法: stream format [default/csv/tsv/teleplot]\r\n");
             return;
         }
         
         if (strcmp(argv[2], "default") == 0) {
             stream_format = STREAM_FORMAT_DEFAULT;
-            ESPSerial.println("出力フォーマットをdefaultに設定しました");
+            ESPSerial.printf("出力フォーマットをdefaultに設定しました\r\n");
         } else if (strcmp(argv[2], "csv") == 0) {
             stream_format = STREAM_FORMAT_CSV;
-            ESPSerial.println("出力フォーマットをCSVに設定しました");
+            ESPSerial.printf("出力フォーマットをCSVに設定しました\r\n");
         } else if (strcmp(argv[2], "tsv") == 0) {
             stream_format = STREAM_FORMAT_TSV;
-            ESPSerial.println("出力フォーマットをTSVに設定しました");
+            ESPSerial.printf("出力フォーマットをTSVに設定しました\r\n");
         } else if (strcmp(argv[2], "teleplot") == 0) {
             stream_format = STREAM_FORMAT_TELEPLOT;
-            ESPSerial.println("出力フォーマットをTeleplotに設定しました");
+            ESPSerial.printf("出力フォーマットをTeleplotに設定しました\r\n");
         } else {
-            ESPSerial.println("不明なフォーマット。default/csv/tsv/teleplot を指定してください");
+            ESPSerial.printf("不明なフォーマット。default/csv/tsv/teleplot を指定してください\r\n");
         }
     } else {
-        ESPSerial.println("不明なオプション。start/stop/format を指定してください");
+        ESPSerial.printf("不明なオプション。start/stop/format を指定してください\r\n");
     }
 }
 
 void cmd_offset(int argc, char* argv[])
 {
     if (argc < 2) {
-        ESPSerial.println("使用法: offset [get/reset/start/stop] [samples]");
-        ESPSerial.println("  get   - 現在のオフセット値を表示");
-        ESPSerial.println("  reset - オフセット値をリセット");
-        ESPSerial.println("  start [samples] - ノンブロッキングオフセット計算を開始");
-        ESPSerial.println("                    samples: 100-5000 (デフォルト: 800)");
-        ESPSerial.println("  stop  - 実行中のオフセット計算を停止");
+        ESPSerial.printf("使用法: offset [get/reset/start/stop] [samples]\r\n");
+        ESPSerial.printf("  get   - 現在のオフセット値を表示\r\n");
+        ESPSerial.printf("  reset - オフセット値をリセット\r\n");
+        ESPSerial.printf("  start [samples] - ノンブロッキングオフセット計算を開始\r\n");
+        ESPSerial.printf("                    samples: 100-5000 (デフォルト: 800)\r\n");
+        ESPSerial.printf("  stop  - 実行中のオフセット計算を停止\r\n");
         return;
     }
     
     if (strcmp(argv[1], "get") == 0) {
-        ESPSerial.println("=== センサーオフセット値 ===");
-        ESPSerial.printf("ジャイロオフセット [rad/s]:\n");
-        ESPSerial.printf("  Roll:  %.6f\n", Roll_rate_offset);
-        ESPSerial.printf("  Pitch: %.6f\n", Pitch_rate_offset);
-        ESPSerial.printf("  Yaw:   %.6f\n", Yaw_rate_offset);
-        ESPSerial.printf("加速度Zオフセット [G]: %.6f\n", Accel_z_offset);
-        ESPSerial.printf("オフセット計算回数: %d\n", Offset_counter);
+        ESPSerial.printf("=== センサーオフセット値 ===\r\n");
+        ESPSerial.printf("ジャイロオフセット [rad/s]:\r\n");
+        ESPSerial.printf("  Roll:  %.6f\r\n", Roll_rate_offset);
+        ESPSerial.printf("  Pitch: %.6f\r\n", Pitch_rate_offset);
+        ESPSerial.printf("  Yaw:   %.6f\r\n", Yaw_rate_offset);
+        ESPSerial.printf("加速度Zオフセット [G]: %.6f\r\n", Accel_z_offset);
+        ESPSerial.printf("オフセット計算回数: %d\r\n", Offset_counter);
     } else if (strcmp(argv[1], "reset") == 0) {
         sensor_reset_offset();
-        ESPSerial.println("センサーオフセットをリセットしました");
+        ESPSerial.printf("センサーオフセットをリセットしました\r\n");
     } else if (strcmp(argv[1], "start") == 0) {
         if (offset_calc.active) {
-            ESPSerial.println("オフセット計算は既に実行中です");
-            ESPSerial.println("エンターキーで停止してから新しい計算を開始してください");
+            ESPSerial.printf("オフセット計算は既に実行中です\r\n");
+            ESPSerial.printf("エンターキーで停止してから新しい計算を開始してください\r\n");
             return;
         }
         
@@ -808,7 +796,7 @@ void cmd_offset(int argc, char* argv[])
         if (argc >= 3) {
             samples = atoi(argv[2]);
             if (samples < 100 || samples > 5000) {
-                ESPSerial.println("サンプル数は100-5000の範囲で指定してください");
+                ESPSerial.printf("サンプル数は100-5000の範囲で指定してください\r\n");
                 return;
             }
         }
@@ -821,133 +809,133 @@ void cmd_offset(int argc, char* argv[])
         offset_calc.target_samples = samples;
         offset_calc.current_samples = 0;
         
-        ESPSerial.printf("ノンブロッキングオフセット計算を開始します (%dサンプル)\n", samples);
-        ESPSerial.println("機体を水平に静置してください...");
-        ESPSerial.println("停止するにはエンターキーを押してください");
+        ESPSerial.printf("ノンブロッキングオフセット計算を開始します (%dサンプル)\r\n", samples);
+        ESPSerial.printf("機体を水平に静置してください...\r\n");
+        ESPSerial.printf("停止するにはエンターキーを押してください\r\n");
     } else if (strcmp(argv[1], "stop") == 0) {
         if (offset_calc.active) {
             offset_calc.active = false;
-            ESPSerial.println("オフセット計算を停止しました");
+            ESPSerial.printf("オフセット計算を停止しました\r\n");
         } else {
-            ESPSerial.println("オフセット計算は実行されていません");
+            ESPSerial.printf("オフセット計算は実行されていません\r\n");
         }
     } else {
-        ESPSerial.println("不明なオプション。get/reset/start を指定してください");
+        ESPSerial.printf("不明なオプション。get/reset/start を指定してください\r\n");
     }
 }
 
 void cmd_mag_cal(int argc, char* argv[])
 {
     if (argc < 2) {
-        ESPSerial.println("使用法: mag_cal [start/stop/reset/save/status]");
-        ESPSerial.println("  start  - キャリブレーションを開始");
-        ESPSerial.println("  stop   - キャリブレーションを停止");
-        ESPSerial.println("  reset  - キャリブレーションパラメータをリセット");
-        ESPSerial.println("  save   - キャリブレーションパラメータを保存");
-        ESPSerial.println("  status - キャリブレーション状態を表示");
+        ESPSerial.printf("使用法: mag_cal [start/stop/reset/save/status]\r\n");
+        ESPSerial.printf("  start  - キャリブレーションを開始\r\n");
+        ESPSerial.printf("  stop   - キャリブレーションを停止\r\n");
+        ESPSerial.printf("  reset  - キャリブレーションパラメータをリセット\r\n");
+        ESPSerial.printf("  save   - キャリブレーションパラメータを保存\r\n");
+        ESPSerial.printf("  status - キャリブレーション状態を表示\r\n");
         return;
     }
     
     if (strcmp(argv[1], "start") == 0) {
         mag_sensor.setCalibrationMode(true);
-        ESPSerial.println("磁気センサーキャリブレーション開始");
-        ESPSerial.println("機体をゆっくりと全方向に回転させてください");
-        ESPSerial.println("300サンプル収集後、自動的に完了します");
+        ESPSerial.printf("磁気センサーキャリブレーション開始\r\n");
+        ESPSerial.printf("機体をゆっくりと全方向に回転させてください\r\n");
+        ESPSerial.printf("300サンプル収集後、自動的に完了します\r\n");
     } else if (strcmp(argv[1], "stop") == 0) {
         mag_sensor.setCalibrationMode(false);
-        ESPSerial.println("磁気センサーキャリブレーション停止");
+        ESPSerial.printf("磁気センサーキャリブレーション停止\r\n");
     } else if (strcmp(argv[1], "reset") == 0) {
         mag_sensor.resetCalibration();
-        ESPSerial.println("磁気センサーキャリブレーションをリセットしました");
+        ESPSerial.printf("磁気センサーキャリブレーションをリセットしました\r\n");
     } else if (strcmp(argv[1], "save") == 0) {
         mag_sensor.saveCalibration();
-        ESPSerial.println("磁気センサーキャリブレーションを保存しました");
+        ESPSerial.printf("磁気センサーキャリブレーションを保存しました\r\n");
     } else if (strcmp(argv[1], "status") == 0) {
-        ESPSerial.printf("キャリブレーションモード: %s\n", 
+        ESPSerial.printf("キャリブレーションモード: %s\r\n", 
                        mag_sensor.isCalibrationMode() ? "有効" : "無効");
-        ESPSerial.println("現在の磁気データ:");
-        ESPSerial.printf("  生データ: X=%.2f, Y=%.2f, Z=%.2f μT\n", Mx, My, Mz);
-        ESPSerial.printf("  平均値:   X=%.2f, Y=%.2f, Z=%.2f μT\n", Mx_ave, My_ave, Mz_ave);
-        ESPSerial.printf("  オフセット: X=%.2f, Y=%.2f, Z=%.2f μT\n", Mx0, My0, Mz0);
+        ESPSerial.printf("現在の磁気データ:\r\n");
+        ESPSerial.printf("  生データ: X=%.2f, Y=%.2f, Z=%.2f μT\r\n", Mx, My, Mz);
+        ESPSerial.printf("  平均値:   X=%.2f, Y=%.2f, Z=%.2f μT\r\n", Mx_ave, My_ave, Mz_ave);
+        ESPSerial.printf("  オフセット: X=%.2f, Y=%.2f, Z=%.2f μT\r\n", Mx0, My0, Mz0);
     } else {
-        ESPSerial.println("不明なオプション。start/stop/reset/save/status を指定してください");
+        ESPSerial.printf("不明なオプション。start/stop/reset/save/status を指定してください\r\n");
     }
 }
 
 void cmd_reset(int argc, char* argv[])
 {
     if (argc < 2) {
-        ESPSerial.println("使用法: reset [ahrs/sensors/all]");
-        ESPSerial.println("  ahrs    - AHRS（姿勢推定）をリセット");
-        ESPSerial.println("  sensors - センサーをリセット");
-        ESPSerial.println("  all     - 全システムをリセット");
+        ESPSerial.printf("使用法: reset [ahrs/sensors/all]\r\n");
+        ESPSerial.printf("  ahrs    - AHRS（姿勢推定）をリセット\r\n");
+        ESPSerial.printf("  sensors - センサーをリセット\r\n");
+        ESPSerial.printf("  all     - 全システムをリセット\r\n");
         return;
     }
     
     if (strcmp(argv[1], "ahrs") == 0) {
         ahrs_reset();
-        ESPSerial.println("AHRSをリセットしました");
+        ESPSerial.printf("AHRSをリセットしました\r\n");
     } else if (strcmp(argv[1], "sensors") == 0) {
         sensor_reset_offset();
-        ESPSerial.println("センサーをリセットしました");
+        ESPSerial.printf("センサーをリセットしました\r\n");
     } else if (strcmp(argv[1], "all") == 0) {
         ahrs_reset();
         sensor_reset_offset();
-        ESPSerial.println("全システムをリセットしました");
+        ESPSerial.printf("全システムをリセットしました\r\n");
     } else {
-        ESPSerial.println("不明なオプション。ahrs/sensors/all を指定してください");
+        ESPSerial.printf("不明なオプション。ahrs/sensors/all を指定してください\r\n");
     }
 }
 
 void cmd_save(int argc, char* argv[])
 {
     if (argc < 2) {
-        ESPSerial.println("使用法: save [offsets/mag_cal/pid/all]");
-        ESPSerial.println("  offsets - センサーオフセット値を保存");
-        ESPSerial.println("  mag_cal - 磁気センサーキャリブレーションを保存");
-        ESPSerial.println("  pid     - PIDゲインを保存");
-        ESPSerial.println("  all     - 全設定を保存");
+        ESPSerial.printf("使用法: save [offsets/mag_cal/pid/all]\r\n");
+        ESPSerial.printf("  offsets - センサーオフセット値を保存\r\n");
+        ESPSerial.printf("  mag_cal - 磁気センサーキャリブレーションを保存\r\n");
+        ESPSerial.printf("  pid     - PIDゲインを保存\r\n");
+        ESPSerial.printf("  all     - 全設定を保存\r\n");
         return;
     }
     
     if (strcmp(argv[1], "offsets") == 0) {
         save_sensor_offsets();
-        ESPSerial.println("センサーオフセット値を保存しました");
+        ESPSerial.printf("センサーオフセット値を保存しました\r\n");
     } else if (strcmp(argv[1], "mag_cal") == 0) {
         mag_sensor.saveCalibration();
-        ESPSerial.println("磁気センサーキャリブレーションを保存しました");
+        ESPSerial.printf("磁気センサーキャリブレーションを保存しました\r\n");
     } else if (strcmp(argv[1], "pid") == 0) {
         save_pid_gains();
-        ESPSerial.println("PIDゲインを保存しました");
+        ESPSerial.printf("PIDゲインを保存しました\r\n");
     } else if (strcmp(argv[1], "all") == 0) {
         save_sensor_offsets();
         mag_sensor.saveCalibration();
         save_pid_gains();
-        ESPSerial.println("全設定を保存しました");
-        ESPSerial.println("  - センサーオフセット値");
-        ESPSerial.println("  - 磁気センサーキャリブレーション");
-        ESPSerial.println("  - PIDゲイン");
+        ESPSerial.printf("全設定を保存しました\r\n");
+        ESPSerial.printf("  - センサーオフセット値\r\n");
+        ESPSerial.printf("  - 磁気センサーキャリブレーション\r\n");
+        ESPSerial.printf("  - PIDゲイン\r\n");
     } else {
-        ESPSerial.println("不明なオプション。offsets/mag_cal/pid/all を指定してください");
+        ESPSerial.printf("不明なオプション。offsets/mag_cal/pid/all を指定してください\r\n");
     }
 }
 
 void cmd_pid(int argc, char* argv[])
 {
     if (argc < 2) {
-        ESPSerial.println("使用法: pid [get/set/save/load/reset] [controller] [param] [value]");
-        ESPSerial.println("  get [controller]     - PIDゲインを表示");
-        ESPSerial.println("  set [controller] [param] [value] - PIDゲインを設定");
-        ESPSerial.println("  save                 - 現在のPIDゲインを保存");
-        ESPSerial.println("  load                 - 保存されたPIDゲインを読み込み");
-        ESPSerial.println("  reset                - PIDゲインをデフォルト値にリセット");
-        ESPSerial.println("");
-        ESPSerial.println("コントローラー:");
-        ESPSerial.println("  roll_rate, pitch_rate, yaw_rate");
-        ESPSerial.println("  roll_angle, pitch_angle");
-        ESPSerial.println("  altitude");
-        ESPSerial.println("");
-        ESPSerial.println("パラメータ: kp, ti, td, eta");
+        ESPSerial.printf("使用法: pid [get/set/save/load/reset] [controller] [param] [value]\r\n");
+        ESPSerial.printf("  get [controller]     - PIDゲインを表示\r\n");
+        ESPSerial.printf("  set [controller] [param] [value] - PIDゲインを設定\r\n");
+        ESPSerial.printf("  save                 - 現在のPIDゲインを保存\r\n");
+        ESPSerial.printf("  load                 - 保存されたPIDゲインを読み込み\r\n");
+        ESPSerial.printf("  reset                - PIDゲインをデフォルト値にリセット\r\n");
+        ESPSerial.printf("\r\n");
+        ESPSerial.printf("コントローラー:\r\n");
+        ESPSerial.printf("  roll_rate, pitch_rate, yaw_rate\r\n");
+        ESPSerial.printf("  roll_angle, pitch_angle\r\n");
+        ESPSerial.printf("  altitude\r\n");
+        ESPSerial.printf("\r\n");
+        ESPSerial.printf("パラメータ: kp, ti, td, eta\r\n");
         return;
     }
     
@@ -955,51 +943,51 @@ void cmd_pid(int argc, char* argv[])
         if (argc >= 3) {
             // 特定のコントローラーのゲインを表示
             if (strcmp(argv[2], "roll_rate") == 0) {
-                ESPSerial.println("=== Roll Rate PID ===");
-                ESPSerial.printf("kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\n", 
+                ESPSerial.printf("=== Roll Rate PID ===\r\n");
+                ESPSerial.printf("kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\r\n", 
                                Roll_rate_kp, Roll_rate_ti, Roll_rate_td, Roll_rate_eta);
             } else if (strcmp(argv[2], "pitch_rate") == 0) {
-                ESPSerial.println("=== Pitch Rate PID ===");
-                ESPSerial.printf("kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\n", 
+                ESPSerial.printf("=== Pitch Rate PID ===\r\n");
+                ESPSerial.printf("kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\r\n", 
                                Pitch_rate_kp, Pitch_rate_ti, Pitch_rate_td, Pitch_rate_eta);
             } else if (strcmp(argv[2], "yaw_rate") == 0) {
-                ESPSerial.println("=== Yaw Rate PID ===");
-                ESPSerial.printf("kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\n", 
+                ESPSerial.printf("=== Yaw Rate PID ===\r\n");
+                ESPSerial.printf("kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\r\n", 
                                Yaw_rate_kp, Yaw_rate_ti, Yaw_rate_td, Yaw_rate_eta);
             } else if (strcmp(argv[2], "roll_angle") == 0) {
-                ESPSerial.println("=== Roll Angle PID ===");
-                ESPSerial.printf("kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\n", 
+                ESPSerial.printf("=== Roll Angle PID ===\r\n");
+                ESPSerial.printf("kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\r\n", 
                                Rall_angle_kp, Rall_angle_ti, Rall_angle_td, Rall_angle_eta);
             } else if (strcmp(argv[2], "pitch_angle") == 0) {
-                ESPSerial.println("=== Pitch Angle PID ===");
-                ESPSerial.printf("kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\n", 
+                ESPSerial.printf("=== Pitch Angle PID ===\r\n");
+                ESPSerial.printf("kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\r\n", 
                                Pitch_angle_kp, Pitch_angle_ti, Pitch_angle_td, Pitch_angle_eta);
             } else if (strcmp(argv[2], "altitude") == 0) {
-                ESPSerial.println("=== Altitude PID ===");
-                ESPSerial.printf("kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\n", 
+                ESPSerial.printf("=== Altitude PID ===\r\n");
+                ESPSerial.printf("kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\r\n", 
                                alt_kp, alt_ti, alt_td, alt_eta);
             } else {
-                ESPSerial.println("不明なコントローラー");
+                ESPSerial.printf("不明なコントローラー\r\n");
             }
         } else {
             // 全PIDゲインを表示
-            ESPSerial.println("=== 全PIDゲイン ===");
-            ESPSerial.printf("Roll Rate:   kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\n", 
+            ESPSerial.printf("=== 全PIDゲイン ===\r\n");
+            ESPSerial.printf("Roll Rate:   kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\r\n", 
                            Roll_rate_kp, Roll_rate_ti, Roll_rate_td, Roll_rate_eta);
-            ESPSerial.printf("Pitch Rate:  kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\n", 
+            ESPSerial.printf("Pitch Rate:  kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\r\n", 
                            Pitch_rate_kp, Pitch_rate_ti, Pitch_rate_td, Pitch_rate_eta);
-            ESPSerial.printf("Yaw Rate:    kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\n", 
+            ESPSerial.printf("Yaw Rate:    kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\r\n", 
                            Yaw_rate_kp, Yaw_rate_ti, Yaw_rate_td, Yaw_rate_eta);
-            ESPSerial.printf("Roll Angle:  kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\n", 
+            ESPSerial.printf("Roll Angle:  kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\r\n", 
                            Rall_angle_kp, Rall_angle_ti, Rall_angle_td, Rall_angle_eta);
-            ESPSerial.printf("Pitch Angle: kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\n", 
+            ESPSerial.printf("Pitch Angle: kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\r\n", 
                            Pitch_angle_kp, Pitch_angle_ti, Pitch_angle_td, Pitch_angle_eta);
-            ESPSerial.printf("Altitude:    kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\n", 
+            ESPSerial.printf("Altitude:    kp=%.3f, ti=%.3f, td=%.3f, eta=%.3f\r\n", 
                            alt_kp, alt_ti, alt_td, alt_eta);
         }
     } else if (strcmp(argv[1], "set") == 0) {
         if (argc < 5) {
-            ESPSerial.println("使用法: pid set [controller] [param] [value]");
+            ESPSerial.printf("使用法: pid set [controller] [param] [value]\r\n");
             return;
         }
         
@@ -1051,58 +1039,58 @@ void cmd_pid(int argc, char* argv[])
         
         if (updated) {
             update_pid_controllers();
-            ESPSerial.printf("%s %s を %.3f に設定しました\n", argv[2], argv[3], value);
+            ESPSerial.printf("%s %s を %.3f に設定しました\r\n", argv[2], argv[3], value);
         } else {
-            ESPSerial.println("不明なコントローラーまたはパラメータ");
+            ESPSerial.printf("不明なコントローラーまたはパラメータ\r\n");
         }
     } else if (strcmp(argv[1], "save") == 0) {
         save_pid_gains();
-        ESPSerial.println("PIDゲインを保存しました");
+        ESPSerial.printf("PIDゲインを保存しました\r\n");
     } else if (strcmp(argv[1], "load") == 0) {
         load_pid_gains();
         update_pid_controllers();
-        ESPSerial.println("PIDゲインを読み込みました");
+        ESPSerial.printf("PIDゲインを読み込みました\r\n");
     } else if (strcmp(argv[1], "reset") == 0) {
         reset_pid_gains_to_default();
         update_pid_controllers();
-        ESPSerial.println("PIDゲインをデフォルト値にリセットしました");
+        ESPSerial.printf("PIDゲインをデフォルト値にリセットしました\r\n");
     } else {
-        ESPSerial.println("不明なオプション。get/set/save/load/reset を指定してください");
+        ESPSerial.printf("不明なオプション。get/set/save/load/reset を指定してください\r\n");
     }
 }
 
 void cmd_load(int argc, char* argv[])
 {
     if (argc < 2) {
-        ESPSerial.println("使用法: load [offsets/mag_cal/pid/all]");
-        ESPSerial.println("  offsets - センサーオフセット値を読み込み");
-        ESPSerial.println("  mag_cal - 磁気センサーキャリブレーションを読み込み");
-        ESPSerial.println("  pid     - PIDゲインを読み込み");
-        ESPSerial.println("  all     - 全設定を読み込み");
+        ESPSerial.printf("使用法: load [offsets/mag_cal/pid/all]\r\n");
+        ESPSerial.printf("  offsets - センサーオフセット値を読み込み\r\n");
+        ESPSerial.printf("  mag_cal - 磁気センサーキャリブレーションを読み込み\r\n");
+        ESPSerial.printf("  pid     - PIDゲインを読み込み\r\n");
+        ESPSerial.printf("  all     - 全設定を読み込み\r\n");
         return;
     }
     
     if (strcmp(argv[1], "offsets") == 0) {
         load_sensor_offsets();
-        ESPSerial.println("センサーオフセット値を読み込みました");
+        ESPSerial.printf("センサーオフセット値を読み込みました\r\n");
     } else if (strcmp(argv[1], "mag_cal") == 0) {
         mag_sensor.loadCalibration();
-        ESPSerial.println("磁気センサーキャリブレーションを読み込みました");
+        ESPSerial.printf("磁気センサーキャリブレーションを読み込みました\r\n");
     } else if (strcmp(argv[1], "pid") == 0) {
         load_pid_gains();
         update_pid_controllers();
-        ESPSerial.println("PIDゲインを読み込みました");
+        ESPSerial.printf("PIDゲインを読み込みました\r\n");
     } else if (strcmp(argv[1], "all") == 0) {
         load_sensor_offsets();
         mag_sensor.loadCalibration();
         load_pid_gains();
         update_pid_controllers();
-        ESPSerial.println("全設定を読み込みました");
-        ESPSerial.println("  - センサーオフセット値");
-        ESPSerial.println("  - 磁気センサーキャリブレーション");
-        ESPSerial.println("  - PIDゲイン");
+        ESPSerial.printf("全設定を読み込みました\r\n");
+        ESPSerial.printf("  - センサーオフセット値\r\n");
+        ESPSerial.printf("  - 磁気センサーキャリブレーション\r\n");
+        ESPSerial.printf("  - PIDゲイン\r\n");
     } else {
-        ESPSerial.println("不明なオプション。offsets/mag_cal/pid/all を指定してください");
+        ESPSerial.printf("不明なオプション。offsets/mag_cal/pid/all を指定してください\r\n");
     }
 }
 
@@ -1112,74 +1100,74 @@ void cmd_optical(int argc, char* argv[])
         // テスト期間を指定された場合
         if (strcmp(argv[1], "stop") == 0) {
             // テスト停止
-            if (optical_test.active) {
-                optical_test.active = false;
-                ESPSerial.println("オプティカルテストを停止しました");
+            if (Optical_test.active) {
+                Optical_test.active = false;
+                ESPSerial.printf("オプティカルテストを停止しました\r\n");
             } else {
-                ESPSerial.println("オプティカルテストは実行されていません");
+                ESPSerial.printf("オプティカルテストは実行されていません\r\n");
             }
             return;
         }
         
         int duration_sec = atoi(argv[1]);
         if (duration_sec < 1 || duration_sec > 60) {
-            ESPSerial.println("テスト期間は1-60秒の範囲で指定してください");
-            ESPSerial.println("または 'optical stop' でテストを停止");
+            ESPSerial.printf("テスト期間は1-60秒の範囲で指定してください\r\n");
+            ESPSerial.printf("または 'optical stop' でテストを停止\r\n");
             return;
         }
         
-        if (optical_test.active) {
-            ESPSerial.println("オプティカルテストは既に実行中です");
-            ESPSerial.println("'optical stop' で停止してから新しいテストを開始してください");
+        if (Optical_test.active) {
+            ESPSerial.printf("オプティカルテストは既に実行中です\r\n");
+            ESPSerial.printf("'optical stop' で停止してから新しいテストを開始してください\r\n");
             return;
         }
         
         // ノンブロッキングテストを開始
-        optical_test.active = true;
-        optical_test.start_time = millis();
-        optical_test.duration_ms = duration_sec * 1000;
-        optical_test.last_print_time = optical_test.start_time;
-        optical_test.last_sample_time = optical_test.start_time;
-        optical_test.total_reads = 0;
-        optical_test.valid_reads = 0;
-        optical_test.failed_reads = 0;
-        optical_test.quality_failed = 0;
-        optical_test.total_movement_x = 0.0f;
-        optical_test.total_movement_y = 0.0f;
-        optical_test.max_velocity_x = 0.0f;
-        optical_test.max_velocity_y = 0.0f;
+        Optical_test.active = true;
+        Optical_test.start_time = millis();
+        Optical_test.duration_ms = duration_sec * 1000;
+        Optical_test.last_print_time = Optical_test.start_time;
+        Optical_test.last_sample_time = Optical_test.start_time;
+        Optical_test.total_reads = 0;
+        Optical_test.valid_reads = 0;
+        Optical_test.failed_reads = 0;
+        Optical_test.quality_failed = 0;
+        Optical_test.total_movement_x = 0.0f;
+        Optical_test.total_movement_y = 0.0f;
+        Optical_test.max_velocity_x = 0.0f;
+        Optical_test.max_velocity_y = 0.0f;
         
-        ESPSerial.printf("=== PMW3901 実測テスト (%d秒) ===\n", duration_sec);
-        ESPSerial.printf("現在のCPI: %.1f (高度: %.3fm)\n", calculateCPI(Altitude2), Altitude2);
-        ESPSerial.println("ノンブロッキングテスト開始...");
-        ESPSerial.println("停止するには 'optical stop' またはエンターキーを押してください");
+        ESPSerial.printf("=== PMW3901 実測テスト (%d秒) ===\r\n", duration_sec);
+        ESPSerial.printf("現在のCPI: %.1f (高度: %.3fm)\r\n", calculateCPI(Altitude2), Altitude2);
+        ESPSerial.printf("ノンブロッキングテスト開始...\r\n");
+        ESPSerial.printf("停止するには 'optical stop' またはエンターキーを押してください\r\n");
         
     } else {
         // 現在の値を表示
-        ESPSerial.println("=== オプティカルフロー ===");
-        ESPSerial.printf("移動量 [m]: X=%.6f, Y=%.6f\n", Optical_flow_x, Optical_flow_y);
-        ESPSerial.printf("速度 [m/s]: X=%.3f, Y=%.3f\n", Velocity_x, Velocity_y);
-        ESPSerial.printf("生Delta値: X=%d, Y=%d\n", deltaX, deltaY);
-        ESPSerial.printf("現在の高度: %.3f m\n", Altitude2);
-        ESPSerial.printf("計算CPI: %.1f\n", calculateCPI(Altitude2));
-        ESPSerial.println("");
-        ESPSerial.println("使用法:");
-        ESPSerial.println("  optical [duration_sec] - 指定秒数のノンブロッキングテスト実行");
-        ESPSerial.println("  optical stop           - 実行中のテストを停止");
+        ESPSerial.printf("=== オプティカルフロー ===\r\n");
+        ESPSerial.printf("移動量 [m]: X=%.6f, Y=%.6f\r\n", Optical_flow_x, Optical_flow_y);
+        ESPSerial.printf("速度 [m/s]: X=%.3f, Y=%.3f\r\n", Velocity_x, Velocity_y);
+        ESPSerial.printf("生Delta値: X=%d, Y=%d\r\n", deltaX, deltaY);
+        ESPSerial.printf("現在の高度: %.3f m\r\n", Altitude2);
+        ESPSerial.printf("計算CPI: %.1f\r\n", calculateCPI(Altitude2));
+        ESPSerial.printf("\r\n");
+        ESPSerial.printf("使用法:\r\n");
+        ESPSerial.printf("  optical [duration_sec] - 指定秒数のノンブロッキングテスト実行\r\n");
+        ESPSerial.printf("  optical stop           - 実行中のテストを停止\r\n");
         
-        if (optical_test.active) {
-            uint32_t elapsed = (millis() - optical_test.start_time) / 1000;
-            uint32_t total_duration = optical_test.duration_ms / 1000;
-            ESPSerial.printf("現在テスト実行中: %d/%d秒経過\n", elapsed, total_duration);
+        if (Optical_test.active) {
+            uint32_t elapsed = (millis() - Optical_test.start_time) / 1000;
+            uint32_t total_duration = Optical_test.duration_ms / 1000;
+            ESPSerial.printf("現在テスト実行中: %d/%d秒経過\r\n", elapsed, total_duration);
         }
     }
 }
 
 void cmd_history(int argc, char* argv[])
 {
-    ESPSerial.println("=== コマンド履歴 ===");
+    ESPSerial.printf("=== コマンド履歴 ===\r\n");
     if (history_count == 0) {
-        ESPSerial.println("履歴がありません");
+        ESPSerial.printf("履歴がありません\r\n");
         return;
     }
     
@@ -1190,7 +1178,7 @@ void cmd_history(int argc, char* argv[])
     
     for (int i = 0; i < display_count; i++) {
         int index = (start_index + i) % CLI_HISTORY_SIZE;
-        ESPSerial.printf("%2d: %s\n", i + 1, command_history[index]);
+        ESPSerial.printf("%2d: %s\r\n", i + 1, command_history[index]);
     }
-    ESPSerial.println("矢印キー↑↓で履歴を呼び出せます");
+    ESPSerial.printf("矢印キー↑↓で履歴を呼び出せます\r\n");
 }

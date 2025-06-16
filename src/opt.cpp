@@ -8,14 +8,14 @@ optconfig_t optconfig;
 // SPI Write
 void registerWrite(uint8_t reg, uint8_t value) {
   spi_write(reg, &value, 1, &pmw);
-  wrapper_delayMicroseconds(200);
+  //wrapper_delayMicroseconds(200);
 }
 
 // SPI Read
 uint8_t registerRead(uint8_t reg) {
   uint8_t value;
   spi_read(reg, &value, 1, &pmw);
-  wrapper_delayMicroseconds(200);
+  //wrapper_delayMicroseconds(200);
   return value;
 }
 

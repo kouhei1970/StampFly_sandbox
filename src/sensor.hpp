@@ -29,6 +29,7 @@
 #include <Arduino.h>
 #include "flight_control.hpp"
 #include "pid.hpp"
+#include "opt.hpp"
 #include <INA3221.h>
 #include <MadgwickAHRS.h>
 #include <common.h>
@@ -102,6 +103,7 @@ extern volatile uint16_t Offset_counter;
 extern int16_t deltaX, deltaY;
 extern volatile float Optical_flow_x, Optical_flow_y;
 extern volatile float Velocity_x, Velocity_y;
+extern volatile optical_test_t Optical_test;
 
 // オフセット計算制御用フラグ
 extern volatile uint8_t Offset_calc_flag;

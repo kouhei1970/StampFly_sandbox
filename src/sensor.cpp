@@ -95,6 +95,8 @@ volatile uint8_t Under_voltage_flag = 0;
 // volatile uint8_t ToF_bottom_data_ready_flag;
 // volatile uint16_t Range=1000;
 
+volatile optical_test_t Optical_test = {false, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f, 0.0f, 0.0f, 0.0f};
+
 void sensor_reset_offset(void)
 {
     Roll_rate_offset = 0.0f;
@@ -335,6 +337,7 @@ float sensor_read(void)
         // USBSerial.printf("%6.3f %7.4f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f\n\r",
         //   Elapsed_time, Interval_time, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z);
 
+        
         // Get Magnetometer data
         if (mag_sensor.update()) {
             // 一時変数を使用してvolatile変数への参照問題を回避
@@ -374,14 +377,18 @@ float sensor_read(void)
             }
         }
 
+        
         // Get Optical Flow (PMW3901データシート準拠 + 品質チェック)
         int16_t raw_deltaX, raw_deltaY;
         uint8_t motion_status = readMotionCount(&raw_deltaX, &raw_deltaY);
-        
+        Optical_test.total_reads++;
+                
         // motion_status: 0=新データなし, 1=有効データ, 2=品質不良で破棄
         if (motion_status == 1 && sens_interval > 0.0f) {
             // 有効なデータが利用可能な場合のみ更新
             // PMW3901データシート準拠の移動量計算（高さベースCPI使用）
+            Optical_test.valid_reads++;
+
             float movement_x, movement_y;
             calculateMovementFromDelta(-raw_deltaY, raw_deltaX, &movement_x, &movement_y, Altitude2); // 軸変換、高度使用
             
@@ -393,15 +400,33 @@ float sensor_read(void)
             Velocity_x = movement_x / sens_interval;
             Velocity_y = movement_y / sens_interval;
             
+            // オプティカルテストの統計更新
+            Optical_test.total_movement_x += movement_x;
+            Optical_test.total_movement_y += movement_y;
+            // 最大速度更新
+            if (abs(Velocity_x) > abs(Optical_test.max_velocity_x)) {
+                Optical_test.max_velocity_x = Velocity_x;
+            }
+            if (abs(Velocity_y) > abs(Optical_test.max_velocity_y)) {
+                Optical_test.max_velocity_y = Velocity_y;
+            }
+            
             // 旧形式の変数も更新（互換性のため）
-            deltaX = -raw_deltaY; // X軸は前後方向
-            deltaY = raw_deltaX;  // Y軸は左右方向
+            //deltaX = -raw_deltaY; // X軸は前後方向
+            //deltaY = raw_deltaX;  // Y軸は左右方向
+        } else if (motion_status == 2) {
+            // 品質不良
+            Optical_test.quality_failed++;
+        } else {
+            // データなし
+            Optical_test.failed_reads++;
         }
         // motion_status == 0 (新データなし) または motion_status == 2 (品質不良) の場合は前回値を保持
-
+        
+        
         // Get Altitude (30Hz)
         Az = az_filter.update(-Accel_z_d, sens_interval);
-
+        
         if (dcnt > interval)
         {
             if (ToF_bottom_data_ready_flag)
@@ -456,7 +481,8 @@ float sensor_read(void)
         }
         else
             dcnt++;
-
+        
+        #if 0
         Altitude = alt_filter.update((float)Range / 1000.0, Interval_time);
         if (first_flag == 1)
             EstimatedAltitude.update(Altitude, Az, Interval_time);
@@ -474,8 +500,10 @@ float sensor_read(void)
         Az_bias = EstimatedAltitude.Bias;
         // USBSerial.printf("Sens=%f Az=%f Altitude=%f Velocity=%f Bias=%f\n\r",Altitude, Az, Altitude2, Alt_velocity,
         // Az_bias);
+        #endif
     } // End of if Mode > Average mode
 
+    #if 0
     // Accel fail safe
     acc_norm = sqrt(Accel_x * Accel_x + Accel_y * Accel_y + Accel_z_d * Accel_z_d);
     Acc_norm = acc_filter.update(acc_norm, Control_period);
@@ -502,8 +530,10 @@ float sensor_read(void)
 
     preMode = Mode; // 今のモードを記憶
 
+    #endif
+    // USBSerial.printf("Roll_rate: %f, Pitch_rate: %f, Yaw_rate: %f\n\r", Roll_rate, Pitch_rate, Yaw_rate);3
     uint32_t et = micros();
-    // USBSerial.printf("Sensor read %f %f %f\n\r", (mt-st)*1.0e-6, (et-mt)*1e-6, (et-st)*1.0e-6);
+    ESPSerial.printf("Sensor read time %f\n\r", (et-st)*1.0e-6);
     return (et - st) * 1.0e-6;
 }
 

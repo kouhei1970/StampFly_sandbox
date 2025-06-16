@@ -23,6 +23,23 @@ typedef struct {
     uint8_t motion_reg; // モーションレジスタの生値
 } optical_flow_data_t;
 
+// オプティカルテスト用の状態管理
+typedef struct {
+    bool active;
+    uint32_t start_time;
+    uint32_t duration_ms;
+    uint32_t last_print_time;
+    uint32_t last_sample_time;
+    int total_reads;
+    int valid_reads;
+    int failed_reads;
+    int quality_failed;
+    float total_movement_x;
+    float total_movement_y;
+    float max_velocity_x;
+    float max_velocity_y;
+} optical_test_t;
+
 extern optconfig_t optconfig;
 
 uint8_t powerUp(optconfig_t* optconfig);
