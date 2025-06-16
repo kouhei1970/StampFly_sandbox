@@ -35,6 +35,7 @@
 #include "mag.hpp"
 #include "opt.hpp"
 #include "sensor.hpp"
+#include "sensor_multitask.hpp"
 #include <INA3221.h>
 
 // 既存の制御関数の宣言
@@ -284,20 +285,34 @@ void control_task_process(void)
     }
     last_time_us = current_time_us;
     
-    // システムモード取得
-    Mode = get_system_mode();
+    // 経過時間更新（既存コードとの互換性のため）
+    Elapsed_time = current_time_us * 1e-6f;
+    
+    // フライトモード判定・更新（重要：既存のjudge_mode_change()を使用）
+    judge_mode_change();
+    
+    // 自動着陸判定
+    if (Mode == AUTO_LANDING_MODE) {
+        auto_landing();
+    }
     
     // モード別処理
     switch (Mode) {
         case FLIGHT_MODE:
         case AUTO_LANDING_MODE:
-        case FLIP_MODE:
             control_get_command();
             control_angle_control();
             control_rate_control();
             control_motor_output();
             break;
             
+        case FLIP_MODE:
+            flip(); // フリップ処理
+            control_motor_output();
+            break;
+            
+        case PARKING_MODE:
+        case AVERAGE_MODE:
         default:
             // モーター停止
             motor_duty_t duty = {0};
@@ -376,9 +391,16 @@ void high_speed_sensor_process(void)
     MULTITASK_DEBUG_TASK_START("HighSpeedSensor");
     
     imu_data_t imu_data;
+    static uint8_t preMode = 0;
     
-    // IMUデータ読み取り
-    imu_update();
+    // モード変更時のフィルタリセット
+    if ((Mode == PARKING_MODE) && (Mode != preMode)) {
+        sensor_reset_filters();
+    }
+    preMode = Mode;
+    
+    // 高速センサー読み取り（IMUのみ、姿勢推定含む）
+    float process_time = sensor_read_high_speed();
     
     // データ構造体に格納
     imu_data.roll_angle = Roll_angle;
@@ -397,6 +419,11 @@ void high_speed_sensor_process(void)
     // 共有データに設定
     set_imu_data(&imu_data);
     
+    // 処理時間監視（デバッグ用）
+    if (process_time > 0.002f) { // 2ms以上の場合警告
+        ESPSerial.printf("WARNING: High-speed sensor process time: %.3f ms\r\n", process_time * 1000.0f);
+    }
+    
     MULTITASK_DEBUG_TASK_END("HighSpeedSensor");
 }
 
@@ -409,16 +436,18 @@ void low_speed_sensor_init(void)
 // 低速センサー処理
 void low_speed_sensor_process(void)
 {
+    MULTITASK_DEBUG_TASK_START("LowSpeedSensor");
+    
     low_speed_sensor_data_t sensor_data = {0};
     
-    // ToFセンサー読み取り
-    if (ToF_bottom_data_ready_flag) {
-        ToF_bottom_data_ready_flag = 0;
-        sensor_data.raw_range = tof_bottom_get_range();
-        sensor_data.range = Range;
-        sensor_data.raw_range_front = tof_front_get_range();
-        sensor_data.range_front = RangeFront;
-    }
+    // 低速センサー読み取り（ToF、磁気センサー、オプティカルフロー等）
+    float process_time = sensor_read_low_speed();
+    
+    // データ構造体に格納
+    sensor_data.raw_range = RawRange;
+    sensor_data.range = Range;
+    sensor_data.raw_range_front = RawRangeFront;
+    sensor_data.range_front = RangeFront;
     
     // 高度データ
     sensor_data.altitude = Altitude;
@@ -439,10 +468,8 @@ void low_speed_sensor_process(void)
     sensor_data.velocity_x = Velocity_x;
     sensor_data.velocity_y = Velocity_y;
     
-    // 電圧読み取り
-    sensor_data.voltage = ina3221.getVoltage(INA3221_CH2);
-    
-    // フラグ
+    // 電圧とフラグ
+    sensor_data.voltage = Voltage;
     sensor_data.over_g_flag = OverG_flag;
     sensor_data.range0_flag = Range0flag;
     sensor_data.under_voltage_flag = Under_voltage_flag;
@@ -452,6 +479,13 @@ void low_speed_sensor_process(void)
     
     // 共有データに設定
     set_low_speed_sensor_data(&sensor_data);
+    
+    // 処理時間監視（デバッグ用）
+    if (process_time > 0.015f) { // 15ms以上の場合警告
+        ESPSerial.printf("WARNING: Low-speed sensor process time: %.3f ms\r\n", process_time * 1000.0f);
+    }
+    
+    MULTITASK_DEBUG_TASK_END("LowSpeedSensor");
 }
 
 // 通信タスク初期化
