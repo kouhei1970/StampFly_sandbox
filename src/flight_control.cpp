@@ -229,12 +229,13 @@ float get_trim_duty(float voltage);
 void flip(void);
 float get_rate_ref(float x); // スポーツモードのスティックとレート指令値との対応
 
-// 割り込み関数
-// Intrupt function
+// 割り込み関数（マルチタスク版では使用しない）
+// Intrupt function (not used in multitask version)
 hw_timer_t *timer = NULL;
 void IRAM_ATTR onTimer()
 {
-    Loop_flag = 1;
+    // マルチタスク版では使用しない
+    // Loop_flag = 1;
 }
 
 // Initialize Multi copter
@@ -268,12 +269,12 @@ void init_copter(void)
     // Initilize Radio control
     rc_init();
 
-    // 割り込み設定
-    // Initialize intrupt
+    // 割り込み設定（マルチタスク版では無効化）
+    // Initialize intrupt (disabled in multitask version)
     timer = timerBegin(0, 80, true);
     timerAttachInterrupt(timer, &onTimer, false);
     timerAlarmWrite(timer, 2500, true);
-    timerAlarmEnable(timer);
+    // timerAlarmEnable(timer);  // マルチタスク版では無効化
 
     // init button G0
     init_button();
