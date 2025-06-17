@@ -51,6 +51,7 @@ Filter raw_gy_filter;
 Filter raw_gz_filter;
 Filter alt_filter;
 
+#if 0
 // Sensor data
 volatile float Roll_angle = 0.0f, Pitch_angle = 0.0f, Yaw_angle = 0.0f;
 volatile float Roll_rate, Pitch_rate, Yaw_rate;
@@ -71,6 +72,7 @@ volatile float Alt_velocity = 0.0f;
 volatile float Az = 0.0;
 volatile float Az_bias = 0.0;
 int16_t deltaX, deltaY;
+#endif
 
 // オプティカルフロー関連変数
 volatile float Optical_flow_x = 0.0f;
@@ -482,7 +484,7 @@ float sensor_read(void)
         else
             dcnt++;
         
-        #if 0
+        
         Altitude = alt_filter.update((float)Range / 1000.0, Interval_time);
         if (first_flag == 1)
             EstimatedAltitude.update(Altitude, Az, Interval_time);
@@ -500,10 +502,10 @@ float sensor_read(void)
         Az_bias = EstimatedAltitude.Bias;
         // USBSerial.printf("Sens=%f Az=%f Altitude=%f Velocity=%f Bias=%f\n\r",Altitude, Az, Altitude2, Alt_velocity,
         // Az_bias);
-        #endif
+        
     } // End of if Mode > Average mode
 
-    #if 0
+    
     // Accel fail safe
     acc_norm = sqrt(Accel_x * Accel_x + Accel_y * Accel_y + Accel_z_d * Accel_z_d);
     Acc_norm = acc_filter.update(acc_norm, Control_period);
@@ -530,10 +532,10 @@ float sensor_read(void)
 
     preMode = Mode; // 今のモードを記憶
 
-    #endif
+    
     // USBSerial.printf("Roll_rate: %f, Pitch_rate: %f, Yaw_rate: %f\n\r", Roll_rate, Pitch_rate, Yaw_rate);3
     uint32_t et = micros();
-    ESPSerial.printf("Sensor read time %f\n\r", (et-st)*1.0e-6);
+    //ESPSerial.printf("Sensor read time %f\n\r", (et-st)*1.0e-6);
     return (et - st) * 1.0e-6;
 }
 
