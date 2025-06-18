@@ -51,7 +51,7 @@ Filter raw_gy_filter;
 Filter raw_gz_filter;
 Filter alt_filter;
 
-#if 0
+#if 1
 // Sensor data
 volatile float Roll_angle = 0.0f, Pitch_angle = 0.0f, Yaw_angle = 0.0f;
 volatile float Roll_rate, Pitch_rate, Yaw_rate;
